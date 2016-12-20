@@ -66,12 +66,13 @@ void Stroke::addPoint(Point point)
 
 vector<pair<double, double> > Stroke::listCoordinates()
 {
+	//returns coordinates of all points as (x,y) pairs
 	vector<pair<double, double> > result;
 	typedef vector<Point> vector_type;
 	for(vector_type::const_iterator pos = points.begin(); pos != points.end(); ++pos)
 	{
-		//cout<<pos->getX()<< " " << pos->getY()<<endl;
-		result.push_back(make_pair(pos->getX(), pos->getY()));
+		//cout<<(*pos).getX()<< " " << (*pos).getY()<<endl;
+		result.push_back(make_pair((*pos).getX(), (*pos).getY()));
 	}
 	return result;
 }
