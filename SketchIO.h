@@ -4,16 +4,6 @@
 
 using namespace std;
 
-class SketchIO {
-	private: 
-		string filename;
-	
-	public:
-		SketchIO( string filename);
-		void read();
-		void setFileName( string filename);
-};
-
 class SketchNew {
 	private:
 		int numPoints,numStrokes;
@@ -28,16 +18,27 @@ class SketchNew {
 		void printContents();
 };
 
+class SketchIO {
+	private: 
+		string filename;
+	
+	public:
+		SketchIO( string filename);
+		SketchNew read();
+		void setFileName( string filename);
+};
+
 SketchIO::SketchIO( string filename) : filename(filename) {}
 
 void SketchIO::setFileName( string filename) {
 	(*this).filename = filename;
 }
 
-void SketchIO::read() {
+SketchNew SketchIO::read() {
 	ifstream input(filename.c_str());
 	double x,y,time;
 	int strokeID,prevID;
+	int strokeCount, pointCount;
 	
 	if (input.is_open()) {
 		if (input.good()) {
@@ -48,8 +49,8 @@ void SketchIO::read() {
 			
 			prevID = strokeID;
 			
-			cout << "Stroke " << strokeID << endl;
-			cout << x << " " << y << " " << time << endl;
+			++strokeCount;
+			++pointCount;
 			
 			while (true) {
 				input >> x;
@@ -61,18 +62,56 @@ void SketchIO::read() {
 				input >> time;
 				
 				if (prevID != strokeID) {
-					cout << "Stroke " << strokeID << endl;
+					++strokeCount;
 				}
 				
-				cout << x << " " << y << " " << time << endl;
+				++pointCount;
 				
 				prevID = strokeID;
 			}
 		}
 	}
 	
-	
 	input.close();
+	
+	ifstream reinput(filename.c_str());
+	SketchNew newSketch(pointCount, strokeCount);
+	
+	if (reinput.is_open()) {
+		if (reinput.good()) {
+			reinput >> x;
+			reinput >> y;
+			reinput >> strokeID;
+			reinput >> time;
+			
+			prevID = strokeID;
+			
+			newSketch.openStroke();
+			newSketch.addPoint(x,y);
+			
+			while (true) {
+				reinput >> x;
+				
+				if (!(reinput.good())) break;
+				
+				reinput >> y;
+				reinput >> strokeID;
+				reinput >> time;
+				
+				if (prevID != strokeID) {
+					newSketch.openStroke();
+				}
+				
+				newSketch.addPoint(x,y);
+				
+				prevID = strokeID;
+			}
+		}
+	}
+	
+	reinput.close();
+	
+	return newSketch;
 }
 
 SketchNew::SketchNew(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
@@ -114,8 +153,26 @@ void SketchNew::openStroke() {
 }
 
 void SketchNew::printContents() {
-	for (int i = 0; i < numStrokes; ++i) {
-		for () { // left
+	int upperBound;
+	
+	for ( int i = 0; i < numStrokes; ++i) {
+		cout << i << "=>";
+		
+		if ( i == numStrokes - 1) {
+			upperBound = numPoints;
 		}
+		else {
+			upperBound = strokeIndices[i+1];
+		}
+		
+		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
+			cout << "(" << coords[j][0] << "," << coords[j][1] << ")";
+			
+			if ( j < upperBound - 1) {
+				cout << "-";
+			} 
+		}
+		
+		cout << endl;
 	}
 } 

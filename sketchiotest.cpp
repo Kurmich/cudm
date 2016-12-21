@@ -3,7 +3,8 @@
 int main() {
 	string filename = "ozan.sketch";
 	SketchIO example(filename);
-	example.read();
+	SketchNew result = example.read();
+	result.printContents();
 	
 	return 0;
 }
