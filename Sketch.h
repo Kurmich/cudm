@@ -129,7 +129,7 @@ Sketch* Sketch::normalized() {
 		}
 		
 		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
-			newSketch->addPoint((coords[i][0]-cx)/stdx,(coords[i][1]-cy)/stdy);
+			newSketch->addPoint((coords[j][0]-cx)/stdx,(coords[j][1]-cy)/stdy);
 		}
 	}
 	
