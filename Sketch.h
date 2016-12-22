@@ -24,6 +24,8 @@ class Sketch {
 		void getCentroid(double &x, double &y);
 		void getStd(double &x, double &y);
 		double findMaxDistance();
+		
+		Sketch* normalized();
 };
 
 Sketch::Sketch(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
@@ -103,6 +105,35 @@ double Sketch::findMaxDistance() {
 	}
 	
 	return sqrt(maxdist);
+}
+
+Sketch* Sketch::normalized() {
+	double cx,cy;
+	double stdx,stdy;
+	
+	getCentroid(cx,cy);
+	getStd(stdx,stdy);
+	
+	Sketch *newSketch = new Sketch(numPoints,numStrokes);
+	
+	int upperBound;
+	
+	for ( int i = 0; i < numStrokes; ++i) {
+		newSketch->openStroke();
+		
+		if ( i == numStrokes - 1) {
+			upperBound = numPoints;
+		}
+		else {
+			upperBound = strokeIndices[i+1];
+		}
+		
+		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
+			newSketch->addPoint((coords[i][0]-cx)/stdx,(coords[i][1]-cy)/stdy);
+		}
+	}
+	
+	return newSketch;
 }
 
 void Sketch::addPoint(double x, double y) {

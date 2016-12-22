@@ -24,5 +24,8 @@ int main() {
 	result->getStd(x,y);
 	cout << "Std x = " << x << " y = " << y << endl;
 	
+	Sketch* norm = result->normalized();
+	norm->printContents();
+	
 	return 0;
 }
