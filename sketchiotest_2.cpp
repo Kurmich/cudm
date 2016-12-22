@@ -17,15 +17,19 @@ int main() {
 		cout << ang[i] << endl;
 	}
 	
+	/*
 	double x,y;
 	result->getCentroid(x,y);
 	cout << "centroid x = " << x << ", y = " << y << endl;
 	cout << "Maxdist = " << result->findMaxDistance() << endl;
 	result->getStd(x,y);
-	cout << "Std x = " << x << " y = " << y << endl;
+	cout << "Std x = " << x << " y = " << y << endl;*/
 	
 	Sketch* norm = result->normalized();
 	norm->printContents();
+	
+	Sketch* rsm = result->resample(50);
+	rsm->printContents();
 	
 	return 0;
 }

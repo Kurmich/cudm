@@ -11,6 +11,9 @@ class Sketch {
 		int ptAdded,strAdded;
 		double **coords;
 		int *strokeIndices;
+		void getCentroid(double &x, double &y);
+		void getStd(double &x, double &y);
+		double findMaxDistance();
 	public:
 		Sketch(int,int);
 		~Sketch();
@@ -21,10 +24,8 @@ class Sketch {
 		int getNumStrokes();
 		int *getStrokeIndices();
 		double **getCoords();
-		void getCentroid(double &x, double &y);
-		void getStd(double &x, double &y);
-		double findMaxDistance();
 		
+		Sketch* resample(double rate);
 		Sketch* normalized();
 };
 
@@ -134,6 +135,62 @@ Sketch* Sketch::normalized() {
 	}
 	
 	return newSketch;
+}
+
+Sketch* Sketch::resample(double rate) {
+	int newNumPoints = 0;
+	double samplingInterval = findMaxDistance()*1.01 / rate;
+	
+	int upperBound;
+	double distance;
+	for (int i = 0; i < numStrokes; ++i) {
+		if ( i == numStrokes - 1) {
+			upperBound = numPoints;
+		}
+		else {
+			upperBound = strokeIndices[i+1];
+		}
+		
+		for (int j = strokeIndices[i]; j < upperBound - 1; ++j) {
+			distance = sqrt((coords[j+1][1] - coords[j][1])*(coords[j+1][1] - coords[j][1]) + (coords[j+1][0] - coords[j][0])*(coords[j+1][0] - coords[j][0]));
+			newNumPoints += (int) (floor(distance / samplingInterval))+1;
+		}
+		
+		++newNumPoints;
+	}
+	
+	Sketch* resampled = new Sketch(newNumPoints,numStrokes);
+	
+	int intPoints;
+	double angleBtw,xdif,ydif;
+	for (int i = 0; i < numStrokes; ++i) {
+		resampled->openStroke();
+		
+		if ( i == numStrokes - 1) {
+			upperBound = numPoints;
+		}
+		else {
+			upperBound = strokeIndices[i+1];
+		}
+		
+		for (int j = strokeIndices[i]; j < upperBound - 1; ++j) {
+			resampled->addPoint(coords[j][0],coords[j][1]);
+			xdif = coords[j+1][0] - coords[j][0];
+			ydif = coords[j+1][1] - coords[j][1];
+			distance = sqrt(ydif*ydif + xdif*xdif);
+			
+			angleBtw = atan2(ydif,xdif);
+			intPoints = (int) (floor(distance / samplingInterval));
+			
+			for (int k = 1; k <= intPoints; ++k) {
+				resampled->addPoint(coords[j][0]+samplingInterval*cos(angleBtw)*k,coords[j][1]+samplingInterval*sin(angleBtw)*k);
+			}
+		}
+		
+		resampled->addPoint(coords[upperBound-1][0],coords[upperBound-1][1]);
+	}
+	
+	return resampled;
 }
 
 void Sketch::addPoint(double x, double y) {
