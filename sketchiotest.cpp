@@ -7,14 +7,35 @@ int main() {
 	result->printContents();
 	FeatureExtractor fe(result);
 	
-	int *si;
-	double *ang;
+	int *angleIndices;
+	double *angles;
 	int numAngles;
-	fe.coords2angles(si,ang,numAngles);
+	int numOfStrokes = result->getNumStrokes();
+	fe.coords2angles(angleIndices,angles,numAngles);
 	
 	cout << "angles = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
-		cout << ang[i] << endl;
+		cout << angles[i] << endl;
+	}
+
+	cout<<"angle indices"<<endl;
+	for(int i = 0; i < numOfStrokes; ++i)
+	{
+		cout<<angleIndices[i]<<endl;
+	}
+
+	double* diff = fe.getMinAngleDistance(angles, 45, 45, numAngles);
+
+	cout << "diffs = " << endl;
+	for (int i = 0; i < numAngles; ++i) {
+		cout << diff[i] << endl;
+	}
+
+	double* pixels = fe.pixelValues(diff, numAngles);
+
+	cout << "pixels = " << endl;
+	for (int i = 0; i < numAngles; ++i) {
+		cout << pixels[i] << endl;
 	}
 	
 	double x,y;
