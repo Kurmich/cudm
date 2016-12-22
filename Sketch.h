@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
+#include <math.h>
 
 using namespace std;
 
@@ -21,6 +22,7 @@ class Sketch {
 		int *getStrokeIndices();
 		double **getCoords();
 		void getCentroid(double &x, double &y);
+		double findMaxDistance();
 };
 
 Sketch::Sketch(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
@@ -61,6 +63,23 @@ void Sketch::getCentroid(double &x, double &y) {
 	else {
 		x = y = 0;
 	}
+}
+
+double Sketch::findMaxDistance() {
+	double x,y;
+	getCentroid(x,y);
+	
+	double maxdist = -1;
+	double curdist;
+	for (int i = 0; i < numPoints; ++i) {
+		curdist = (coords[i][1] - y)*(coords[i][1] - y) + (coords[i][0] - x)*(coords[i][0] - x);
+		
+		if (curdist > maxdist) {
+			maxdist = curdist;
+		}
+	}
+	
+	return sqrt(maxdist);
 }
 
 void Sketch::addPoint(double x, double y) {

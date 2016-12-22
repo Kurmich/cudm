@@ -20,6 +20,7 @@ int main() {
 	double x,y;
 	result->getCentroid(x,y);
 	cout << "centroid x = " << x << ", y = " << y << endl;
+	cout << "Maxdist = " << result->findMaxDistance() << endl;
 	
 	return 0;
 }
