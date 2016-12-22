@@ -1,161 +1,102 @@
-#include <string>
 #include <iostream>
-#include <vector>
+#include <fstream>
+#include <string.h>
+
 using namespace std;
 
-class Point
-{
-	string pid;
-	double time;
-	double x;
-	double y;
-
-public:
-	Point(string newPid, double newTime, double newX, double newY);
-	void printContents() const;
-	string getPointId() const;
-	double getTime() const;
-	double getX() const;
-	double getY() const;
+class Sketch {
+	private:
+		int numPoints,numStrokes;
+		int ptAdded,strAdded;
+		double **coords;
+		int *strokeIndices;
+	public:
+		Sketch(int,int);
+		~Sketch();
+		void addPoint(double,double);
+		void openStroke();
+		void printContents();
+		int getNumPoints();
+		int getNumStrokes();
+		int *getStrokeIndices();
+		double **getCoords();
 };
 
-
-Point::Point(string newPid, double newTime, double newX, double newY)
-{
-	pid = newPid;
-	time = newTime;
-	x = newX;
-	y = newY;
-}
-
-void Point::printContents() const
-{
-	cout <<"point id = " << getPointId() << " time = " << getTime() << " x = " << getX() << " y = " << getY() << endl;
-}
-
-string Point::getPointId() const
-{
-	return pid;
-}
-
-double Point::getTime() const
-{
-	return time;
-}
-
-double Point::getX() const
-{
-	return x;
-}
-
-double Point::getY() const
-{
-	return y;
-}
-
-
-class Stroke
-{
-	string sid;
-	vector<Point> points; 
-public:
-	Stroke(string newSid);
-	void addPoint(Point point);
-	string getStrokeId() const;
-	vector<Point> getPoints() const;
-	vector<pair<double, double> > listCoordinates() const; 
+Sketch::Sketch(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
+	coords = new double*[numPoints];
+	for ( int i = 0; i < numPoints; ++i) {
+		coords[i] = new double[2];
+	}
 	
-};
-
-
-Stroke::Stroke(string newSid)
-{
-	sid = newSid;
+	strokeIndices = new int[numStrokes];
 }
 
-void Stroke::addPoint(Point point)
-{
-	points.push_back(point);
-}
-
-string Stroke::getStrokeId() const
-{
-	return sid;
-}
-
-vector<Point> Stroke::getPoints() const
-{
-	return points;
-}
-
-vector<pair<double, double> > Stroke::listCoordinates() const
-{
-	//returns coordinates of all points as (x,y) pairs
-	vector<pair<double, double> > result;
-	typedef vector<Point> vector_type;
-	for(vector_type::const_iterator pos = points.begin(); pos != points.end(); ++pos)
-	{
-		//cout<<(*pos).getX()<< " " << (*pos).getY()<<endl;
-		result.push_back(make_pair((*pos).getX(), (*pos).getY()));
+Sketch::~Sketch() {
+	for ( int i = 0; i < numPoints; ++i) {
+		delete [] coords[i];
 	}
-	return result;
+	
+	delete [] coords;
+	
+	delete [] strokeIndices;
 }
 
-
-
-class Sketch
-{
-	string sketch_id;
-	vector<Stroke> strokes;
-public:
-	Sketch(string newSketch_id);
-	Sketch(string newSketch_id, const vector<Stroke> &newStrokes);
-	void addStrokes(Stroke stroke);
-	vector<pair<double, double> > listCoordinates();
-	void printContents() const;
-};
-
-
-Sketch::Sketch(string newSketch_id)
-{
-	sketch_id = newSketch_id;
-}
-
-Sketch::Sketch(string newSketch_id, const vector<Stroke> &newStrokes)
-{
-	sketch_id = newSketch_id;
-	strokes = newStrokes;
-}
-
-void Sketch::addStrokes(Stroke stroke)
-{
-	strokes.push_back(stroke);
-}
-
-vector<pair<double, double> > Sketch::listCoordinates()
-{
-	//returns coordinates of all points of all strokes as (x,y) pairs
-	vector<pair<double, double> > result;
-	typedef vector<Stroke> vector_type;
-	for(vector_type::const_iterator pos = strokes.begin(); pos != strokes.end(); ++pos)
-	{
-		//Insert all points of current stroke to resulting array
-		result.insert(result.end(), (*pos).listCoordinates().begin(), (*pos).listCoordinates().end() );
+void Sketch::addPoint(double x, double y) {
+	if (ptAdded < numPoints) {
+		coords[ptAdded][0] = x;
+		coords[ptAdded++][1] = y;
 	}
-	return result;
+	else {
+		cout << "ERROR: Sketch is full!" << endl;
+	}
 }
 
+void Sketch::openStroke() {
+	if (strAdded < numStrokes) {
+		strokeIndices[strAdded++] = ptAdded;
+	}
+	else {
+		cout << "ERROR: Sketch is full!" << endl;
+	}
+}
 
-void Sketch::printContents() const
-{
-	typedef vector<Stroke> stroke_type;
-	typedef vector<Point> point_type;
-	for(stroke_type::const_iterator pos = strokes.begin(); pos != strokes.end(); ++pos)
-	{
-		cout<<"Stroke id = " << (*pos).getStrokeId()<<endl;
-		for(point_type::const_iterator pos2 = (*pos).getPoints().begin(); pos2 != (*pos).getPoints().end(); ++pos2 )
-		{
-			cout<< " time = "<< (*pos2).getTime() << " x = " << (*pos2).getX() << " y = " << (*pos2).getY() << endl;
+void Sketch::printContents() {
+	int upperBound;
+	
+	for ( int i = 0; i < numStrokes; ++i) {
+		cout << i << "=>";
+		
+		if ( i == numStrokes - 1) {
+			upperBound = numPoints;
 		}
+		else {
+			upperBound = strokeIndices[i+1];
+		}
+		
+		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
+			cout << "(" << coords[j][0] << "," << coords[j][1] << ")";
+			
+			if ( j < upperBound - 1) {
+				cout << "-";
+			} 
+		}
+		
+		cout << endl;
 	}
+} 
+
+int Sketch::getNumPoints() {
+	return numPoints;
+}
+
+int Sketch::getNumStrokes() {
+	return numStrokes;
+}
+
+double** Sketch::getCoords() {
+	return coords;
+}
+
+int* Sketch::getStrokeIndices() {
+	return strokeIndices;
 }
