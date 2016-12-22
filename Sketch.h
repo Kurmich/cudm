@@ -22,6 +22,7 @@ class Sketch {
 		int *getStrokeIndices();
 		double **getCoords();
 		void getCentroid(double &x, double &y);
+		void getStd(double &x, double &y);
 		double findMaxDistance();
 };
 
@@ -59,6 +60,28 @@ void Sketch::getCentroid(double &x, double &y) {
 		
 		x = xsum;
 		y = ysum;
+	}
+	else {
+		x = y = 0;
+	}
+}
+
+void Sketch::getStd(double &x, double &y) {
+	if ( numPoints > 0) {
+		double cx,cy;
+		getCentroid(cx,cy);
+		
+		double xsqsum = 0,ysqsum = 0;
+		for ( int i = 0; i < numPoints; ++i) {
+			xsqsum += (coords[i][0] - cx)*(coords[i][0] - cx);
+			ysqsum += (coords[i][1] - cy)*(coords[i][1] - cy);
+		}
+		
+		xsqsum /= numPoints;
+		ysqsum /= numPoints;
+		
+		x = sqrt(xsqsum);
+		y = sqrt(ysqsum);
 	}
 	else {
 		x = y = 0;
