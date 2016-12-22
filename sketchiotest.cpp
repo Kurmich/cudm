@@ -10,8 +10,10 @@ int main() {
 	int *angleIndices;
 	double *angles;
 	int numAngles;
+	double minX, minY, maxX, maxY;
 	int numOfStrokes = result->getNumStrokes();
-	fe.coords2angles(angleIndices,angles,numAngles);
+	fe.coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
+	cout<<"maxX = "<<maxX<<" maxY "<<maxY<<" minX = "<<minX<<" minY = "<<minY<<endl;
 	
 	cout << "angles = " << endl;
 	for (int i = 0; i < numAngles; ++i) {

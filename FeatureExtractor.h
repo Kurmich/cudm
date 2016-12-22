@@ -9,7 +9,7 @@ class FeatureExtractor {
 		Sketch* sketch;
 	public:
 		FeatureExtractor(Sketch* sketch);
-		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles);
+		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles, double &maxX, double &maxY, double &minX, double &minY);
 		double* getMinAngleDistance(double *angles, double curAngle, double curAngle2, int numAngles);
 		double truncate(double curDiff);
 		double* pixelValues(double* minDist, int numAngles);
@@ -17,7 +17,7 @@ class FeatureExtractor {
 
 FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
 
-void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles) {
+void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles, double &maxX, double &maxY, double &minX, double &minY) {
 	//Get stroke coordinates and indices
 	int *sIndices = sketch->getStrokeIndices();
 	double **sCoords = sketch->getCoords();
@@ -30,7 +30,10 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 	int lastIndex;
 	double angle,diffy,diffx;
 	int curAngleIndex;
-	
+	minX = sCoords[0][0];
+	maxX = sCoords[0][0];
+	minY = sCoords[0][1];
+	maxY = sCoords[0][1];
 	for (int str = 0; str < sketch->getNumStrokes(); ++str) {
 		//Get last index of current stroke
 		if (str == sketch->getNumStrokes() - 1) {
@@ -44,6 +47,11 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 		angleIndices[str] = sIndices[str]-str;
 		//Starting index of angles to fill
 		curAngleIndex = angleIndices[str];
+		//update maxs and mins
+		minX = min(minX, sCoords[sIndices[str]][0]);
+		minY = min(minY, sCoords[sIndices[str]][1]);
+		maxX = max(maxX, sCoords[sIndices[str]][0]);
+		maxY = max(maxY, sCoords[sIndices[str]][1]);
 		for (int pt = sIndices[str]+1; pt < lastIndex; ++pt) {
 			//Get differences both in x and y directions
 			diffy = sCoords[pt][1] - sCoords[pt-1][1];
