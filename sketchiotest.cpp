@@ -17,5 +17,9 @@ int main() {
 		cout << ang[i] << endl;
 	}
 	
+	double x,y;
+	result->getCentroid(x,y);
+	cout << "centroid x = " << x << ", y = " << y << endl;
+	
 	return 0;
 }

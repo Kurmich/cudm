@@ -20,6 +20,7 @@ class Sketch {
 		int getNumStrokes();
 		int *getStrokeIndices();
 		double **getCoords();
+		void getCentroid(double &x, double &y);
 };
 
 Sketch::Sketch(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
@@ -39,6 +40,27 @@ Sketch::~Sketch() {
 	delete [] coords;
 	
 	delete [] strokeIndices;
+}
+
+void Sketch::getCentroid(double &x, double &y) {
+	if ( numPoints > 0) {
+		double xsum = 0;
+		double ysum = 0;
+		
+		for (int i = 0; i < numPoints; ++i) {
+			xsum += coords[i][0];
+			ysum += coords[i][1];
+		}
+		
+		xsum /= numPoints;
+		ysum /= numPoints;
+		
+		x = xsum;
+		y = ysum;
+	}
+	else {
+		x = y = 0;
+	}
 }
 
 void Sketch::addPoint(double x, double y) {
