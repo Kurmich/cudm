@@ -22,6 +22,7 @@ class FeatureExtractor {
 		double** init2Darray(int size);
 		double** extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, double hsize, int gridSize, bool endpt);
 		void pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image);
+		double** downsample(double** image, double gridSize);
 };
 
 FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
@@ -141,6 +142,7 @@ double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices
 	}
 
 
+    cout<<"featureImage: "<<endl;
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
 		for(int j = 0; j < 2*gridSize; ++j)
@@ -150,11 +152,40 @@ double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices
 		cout<<endl;
 	}
 
+	double** downsampled = downsample(featim, gridSize);
+	cout<<"downsampled: "<<endl;
+	for(int i = 0; i < gridSize; ++i)
+	{
+		for(int j = 0; j < gridSize; ++j)
+		{
+			cout<<downsampled[i][j]<< " ";
+		}
+		cout<<endl;
+	}
+
 	cout << "pixels = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
 		cout << pixels[i] << endl;
 	}
 	return featim; 
+}
+
+double** FeatureExtractor::downsample(double** image, double gridSize)
+{
+	double** downsampled = init2Darray(gridSize);
+	double curMax;
+	for(int i = 0; i < 2*gridSize; i += 2)
+	{
+		for(int j = 0; j < 2*gridSize; j += 2)
+		{
+			curMax = max(image[i][j], image[i+1][j]);
+			curMax = max(curMax, image[i][j+1]);
+			curMax = max(curMax, image[i+1][j+1]);
+			downsampled[i/2][j/2] = curMax;
+		}
+	}
+
+	return downsampled;
 }
 
 void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image)
