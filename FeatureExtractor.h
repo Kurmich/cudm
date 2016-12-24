@@ -20,9 +20,11 @@ class FeatureExtractor {
 		vector<int> cum(vector<int> q,  int x, char op);
 		void drawBresenham(  double x1,  double y1, double x2, double y2, double* pixels, int angleIndex, double** &image );
 		double** init2Darray(int size);
-		double** extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, double hsize, int gridSize, bool endpt);
+		double** extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, int hsize, int gridSize, bool endpt);
 		void pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image);
 		double** downsample(double** image, double gridSize);
+		double** gaussianFilter(int hsize, double sigma);
+		double** smoothim(double **image, int hsize, double sigma, int gridSize);
 };
 
 FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
@@ -39,7 +41,7 @@ double* FeatureExtractor::extract()
 	
 	double resampleInterval = 50.0;
     double sigma = 10.0;
-    double hsize = 4.0;
+    int hsize = 4.0;
     int gridSize = 12;
    // const double angles[] = {0, 45, 90, 135, 180 };
     int idmFeatureSize = gridSize*gridSize*5;
@@ -93,7 +95,7 @@ double* FeatureExtractor::extract()
     return idmFeature;
 }
 
-double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, double hsize, int gridSize, bool endpt )
+double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, int hsize, int gridSize, bool endpt )
 {
 	double** featim = init2Darray(2*gridSize);;
 	int* sIndices = transformed->getStrokeIndices();
@@ -152,7 +154,18 @@ double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices
 		cout<<endl;
 	}
 
-	double** downsampled = downsample(featim, gridSize);
+	double** smoothed = smoothim(featim, hsize, sigma, gridSize);
+	cout<<"smoothed: "<<endl;
+	for(int i = 0; i < 2*gridSize; ++i)
+	{
+		for(int j = 0; j < 2*gridSize; ++j)
+		{
+			cout<<smoothed[i][j]<< " ";
+		}
+		cout<<endl;
+	}
+
+	double** downsampled = downsample(smoothed, gridSize);
 	cout<<"downsampled: "<<endl;
 	for(int i = 0; i < gridSize; ++i)
 	{
@@ -168,6 +181,71 @@ double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices
 		cout << pixels[i] << endl;
 	}
 	return featim; 
+}
+
+double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
+{
+	double** gfilter = init2Darray(hsize+1);
+	double sum = 0;
+	double r, s = 2.0 * sigma * sigma;
+	int d = hsize/2;
+	for (int x = -d; x <= d; x++) // Loop to generate 5x5 kernel
+    {
+        for(int y = -d; y <= d; y++)
+        {
+            r = sqrt(x*x + y*y);
+            gfilter[x + d][y + d] = (exp(-(r*r)/s))/(PI * s);
+            sum += gfilter[x + d][y + d];
+        }
+    }
+
+     for(int i = 0; i <= hsize; ++i) // Loop to normalize the kernel
+        for(int j = 0; j <= hsize; ++j)
+            gfilter[i][j] /= sum;
+    cout<<"gaussianFilter size "<<hsize+1<<endl;
+    return gfilter;
+}
+
+double** FeatureExtractor::smoothim(double **image, int hsize, double sigma, int gridSize)
+{
+	double** fgauss = gaussianFilter(hsize, sigma);
+	double** result = init2Darray(2*gridSize);
+	int ax, ay;
+	double sum = 0, maximum = 0;
+	for(int i = 0; i < 2*gridSize; ++i)
+	{
+		for(int j = 0; j < 2*gridSize; ++j)
+		{
+			sum = 0;
+			for(int fi = 0; fi < hsize + 1; ++fi)
+			{
+				for(int fj = 0; fj < hsize + 1; ++fj)
+				{
+					ax = i + (fi - hsize/2);
+                    ay = j + (fj - hsize/2);
+                    if(ax >= 0 && ay >= 0 && ax < 2*gridSize && ay < 2*gridSize)
+                    {
+                        sum = sum + image[ax][ay] * fgauss[fi][fj];
+                    }  
+				}
+			}
+			result[i][j] = sum;
+			maximum = max(maximum, sum);
+		}
+	}
+	if(maximum != 0)
+	{
+		for(int i = 0; i < 2*gridSize; ++i)
+		{
+			for(int j = 0; j < 2*gridSize; ++j)
+			{
+				result[i][j] /= maximum;
+			}
+		}
+	}
+
+	
+	return result;
 }
 
 double** FeatureExtractor::downsample(double** image, double gridSize)
