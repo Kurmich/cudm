@@ -30,6 +30,7 @@ class Sketch {
 		
 		Sketch* resample(double rate);			// sketch resampler
 		Sketch* normalized();					// normalization of a sketch
+		Sketch* transform(double minX, double minY, double maxX, double maxY);
 };
 
 
@@ -226,6 +227,35 @@ Sketch* Sketch::resample(double rate) {
 	}
 	
 	return resampled;
+}
+
+Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
+{
+	double newMax = 23, newMin = 0;
+	double newRange = newMax - newMin;
+	double oldRangeX = maxX - minX;
+	double oldRangeY = maxY - minY;
+	Sketch *transformed= new Sketch(numPoints,numStrokes);
+	for(int i = 0; i < numStrokes; ++i)
+	{
+		transformed->strokeIndices[i] = strokeIndices[i];
+	}
+
+	for(int i = 0; i < numPoints; ++i)
+	{
+		if(oldRangeX != 0)
+		{
+			transformed->coords[i][0] = ((coords[i][0] - minX)*newRange/oldRangeX) + newMin;
+			transformed->coords[i][0] = floor(transformed->coords[i][0]);
+		}
+		if(oldRangeY != 0)
+		{
+			transformed->coords[i][1] = ((coords[i][1] - minY)*newRange/oldRangeY) + newMin;
+			transformed->coords[i][1] = floor(transformed->coords[i][1]);
+		}
+	}
+
+	return transformed;
 }
 
 // point adder

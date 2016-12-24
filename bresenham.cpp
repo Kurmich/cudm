@@ -138,9 +138,9 @@ void bresenham(  double x1,  double y1, double x2, double y2 )
   }
 
   for(int i = 0; i < x.size(); ++i)
-      {
+  {
         cout<<x[i]<<" "<<y[i]<<endl;
-      }
+  }
   cout<<dx<< " " <<dy<<endl;
 }
 

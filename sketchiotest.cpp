@@ -7,12 +7,8 @@ int main() {
 	result->printContents();
 	FeatureExtractor fe(result);
 	
-	int *angleIndices;
-	double *angles;
-	int numAngles;
-	double minX, minY, maxX, maxY;
-	int numOfStrokes = result->getNumStrokes();
-	fe.coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
+	fe.extract();
+	/*
 	cout<<"maxX = "<<maxX<<" maxY "<<maxY<<" minX = "<<minX<<" minY = "<<minY<<endl;
 	
 	cout << "angles = " << endl;
@@ -44,6 +40,6 @@ int main() {
 	result->getCentroid(x,y);
 	cout << "centroid x = " << x << ", y = " << y << endl;
 	cout << "Maxdist = " << result->findMaxDistance() << endl;
-	
+	*/
 	return 0;
 }
