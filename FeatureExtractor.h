@@ -20,11 +20,11 @@ class FeatureExtractor {
 		vector<int> cum(vector<int> q,  int x, char op);
 		void drawBresenham(  double x1,  double y1, double x2, double y2, double* pixels, int angleIndex, double** &image );
 		double** init2Darray(int size);
-		double** extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, int hsize, int gridSize, bool endpt);
+		double** extractFeatureImage(double** gfilter, double* pixels, int* angleIndices, int numAngles, Sketch* transformed,  int hsize, int gridSize, bool endpt);
 		void pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image);
 		double** downsample(double** image, double gridSize);
 		double** gaussianFilter(int hsize, double sigma);
-		double** smoothim(double **image, int hsize, double sigma, int gridSize);
+		double** smoothim(double **image, double** fgauss, int hsize, int gridSize);
 };
 
 FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
@@ -62,20 +62,32 @@ double* FeatureExtractor::extract()
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
 	cout<<"transformed"<<endl;
 	transformed->printContents();
+	double** gfilter = gaussianFilter(hsize, sigma);
+
+	
 	int curAngle = 0;
-	double* pixels1 = pixelValues(angles, curAngle, (curAngle + 180)%360, numAngles);
-	double** featImage1 = extractFeatureImage(pixels1, angleIndices, numAngles, transformed, sigma, hsize,  gridSize, false );
+	int curAngle2 = (curAngle + 180)%360;
+	double* pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
+	double** featImage1 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+
+
 	curAngle = 45;
-	double* pixels2 = pixelValues(angles, curAngle, (curAngle + 180)%360, numAngles);
-	double** featImage2 = extractFeatureImage(pixels1, angleIndices, numAngles, transformed, sigma, hsize,  gridSize, false );
+	curAngle2 = (curAngle + 180)%360;
+	double* pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage2 = extractFeatureImage(gfilter,pixels2, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+
+
 	curAngle = 90;
-	double* pixels3 = pixelValues(angles, curAngle, (curAngle + 180)%360, numAngles);
-	double** featImage3 = extractFeatureImage(pixels1, angleIndices, numAngles, transformed, sigma, hsize,  gridSize, false );
+	curAngle2 = (curAngle + 180)%360;
+	double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage3 = extractFeatureImage(gfilter,pixels3, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	
 	curAngle = 135;
-	double* pixels4 = pixelValues(angles, curAngle, (curAngle + 180)%360, numAngles);
-	double** featImage4 = extractFeatureImage(pixels1, angleIndices, numAngles, transformed, sigma, hsize,  gridSize, false );
-	double* pixels5 = pixelValues(angles, curAngle, (curAngle + 180)%360, numAngles);
-	double** featImage5 = extractFeatureImage(pixels1, angleIndices, numAngles, transformed, sigma, hsize,  gridSize, true );
+	curAngle2 = (curAngle + 180)%360;
+	double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage4 = extractFeatureImage(gfilter,pixels4, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+
+	double** featImage5 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
 	/*
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
@@ -95,7 +107,7 @@ double* FeatureExtractor::extract()
     return idmFeature;
 }
 
-double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices, int numAngles, Sketch* transformed, double sigma, int hsize, int gridSize, bool endpt )
+double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels, int* angleIndices, int numAngles, Sketch* transformed, int hsize, int gridSize, bool endpt )
 {
 	double** featim = init2Darray(2*gridSize);;
 	int* sIndices = transformed->getStrokeIndices();
@@ -154,7 +166,7 @@ double** FeatureExtractor::extractFeatureImage(double* pixels, int* angleIndices
 		cout<<endl;
 	}
 
-	double** smoothed = smoothim(featim, hsize, sigma, gridSize);
+	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
 	cout<<"smoothed: "<<endl;
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
@@ -206,9 +218,8 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
     return gfilter;
 }
 
-double** FeatureExtractor::smoothim(double **image, int hsize, double sigma, int gridSize)
+double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, int gridSize)
 {
-	double** fgauss = gaussianFilter(hsize, sigma);
 	double** result = init2Darray(2*gridSize);
 	int ax, ay;
 	double sum = 0, maximum = 0;
