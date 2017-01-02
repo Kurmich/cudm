@@ -61,7 +61,7 @@ void Sketch::getCentroid(double &x, double &y) {
 		double xsum = 0;						// then take the avg. of coordinates
 		double ysum = 0;						// and return them in parameters
 		
-		for (int i = 0; i < numPoints; ++i) {
+		for (int i = 0; i < ptAdded; ++i) {
 			xsum += coords[i][0];
 			ysum += coords[i][1];
 		}
@@ -85,7 +85,7 @@ void Sketch::getStd(double &x, double &y) {
 		getCentroid(cx,cy);										// take the std. in both axes
 																// by just applying the defn. of
 		double xsqsum = 0,ysqsum = 0;							// standard deviation
-		for ( int i = 0; i < numPoints; ++i) {
+		for ( int i = 0; i < ptAdded; ++i) {
 			xsqsum += (coords[i][0] - cx)*(coords[i][0] - cx);
 			ysqsum += (coords[i][1] - cy)*(coords[i][1] - cy);
 		}
@@ -108,7 +108,7 @@ double Sketch::findMaxDistance() {
 	
 	double maxdist = -1;
 	double curdist;
-	for (int i = 0; i < numPoints; ++i) {
+	for (int i = 0; i < ptAdded; ++i) {
 		curdist = (coords[i][1] - y)*(coords[i][1] - y) + (coords[i][0] - x)*(coords[i][0] - x);
 		
 		if (curdist > maxdist) {
@@ -133,11 +133,11 @@ Sketch* Sketch::normalized() {
 	
 	int upperBound;
 	
-	for ( int i = 0; i < numStrokes; ++i) {
+	for ( int i = 0; i < strAdded; ++i) {
 		newSketch->openStroke();
 		
 		if ( i == numStrokes - 1) {
-			upperBound = numPoints;
+			upperBound = ptAdded;
 		}
 		else {
 			upperBound = strokeIndices[i+1];
@@ -166,20 +166,21 @@ Sketch* Sketch::resample(double rate) {
 	// we need to create a new sketch, however, we don't yet know
 	// how many points will be created and added to this sketch
 	// here I count the # of points needed
-	for (int i = 0; i < numStrokes; ++i) {
+	for (int i = 0; i < strAdded; ++i) {
 		++newNumPoints;
 		
 		if (i < numStrokes - 1) {
 			upperBound = strokeIndices[i+1];
 		}
 		else {
-			upperBound = numPoints;
+			upperBound = ptAdded;
 		}
 		
 		for (int j = strokeIndices[i]+1; j < upperBound; ++j) {
 			// count the # of points between every point
 			dist = sqrt((coords[j][0]-coords[j-1][0])*(coords[j][0]-coords[j-1][0]) + (coords[j][1]-coords[j-1][1])*(coords[j][1]-coords[j-1][1]));
-			newNumPoints += (int) (floor(dist / samplingInterval));
+			//cout << newNumPoints << endl;
+			newNumPoints += (int) (ceil(dist / samplingInterval));
 		}
 	}
 	
@@ -187,7 +188,7 @@ Sketch* Sketch::resample(double rate) {
 	Sketch* resampled = new Sketch(newNumPoints,numStrokes);
 	
 	double prevx,prevy,sampdistance,cx,cy,angle,newx,newy;
-	for (int i = 0; i < numStrokes; ++i) {
+	for (int i = 0; i < strAdded; ++i) {
 		// before I start resampling, I need to open a stroke
 		resampled->openStroke();
 		
@@ -200,7 +201,7 @@ Sketch* Sketch::resample(double rate) {
 			upperBound = strokeIndices[i+1];
 		}
 		else {
-			upperBound = numPoints;
+			upperBound = ptAdded;
 		}
 		
 		// keep adding sample points far from a distance of sampling
@@ -236,12 +237,14 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 	double oldRangeX = maxX - minX;
 	double oldRangeY = maxY - minY;
 	Sketch *transformed= new Sketch(numPoints,numStrokes);
-	for(int i = 0; i < numStrokes; ++i)
+	transformed->ptAdded = this->ptAdded;
+	transformed->strAdded = this->strAdded;
+	for(int i = 0; i < strAdded; ++i)
 	{
 		transformed->strokeIndices[i] = strokeIndices[i];
 	}
 
-	for(int i = 0; i < numPoints; ++i)
+	for(int i = 0; i < ptAdded; ++i)
 	{
 		if(oldRangeX != 0)
 		{
@@ -289,11 +292,11 @@ void Sketch::openStroke() {
 void Sketch::printContents() {
 	int upperBound;
 	
-	for ( int i = 0; i < numStrokes; ++i) {
+	for ( int i = 0; i < strAdded; ++i) {
 		cout << i << "=>";
 		
 		if ( i == numStrokes - 1) {
-			upperBound = numPoints;
+			upperBound = ptAdded;
 		}
 		else {
 			upperBound = strokeIndices[i+1];
@@ -313,11 +316,11 @@ void Sketch::printContents() {
 
 // getter methods
 int Sketch::getNumPoints() {
-	return numPoints;
+	return ptAdded;
 }
 
 int Sketch::getNumStrokes() {
-	return numStrokes;
+	return strAdded;
 }
 
 double** Sketch::getCoords() {

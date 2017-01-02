@@ -43,15 +43,17 @@ double* FeatureExtractor::extract()
     double sigma = 10.0;
     int hsize = 4.0;
     int gridSize = 12;
-   // const double angles[] = {0, 45, 90, 135, 180 };
-    int idmFeatureSize = gridSize*gridSize*5;
+    // const double angles[] = {0, 45, 90, 135, 180 };
+	int fimgSize = gridSize*gridSize;
+    int idmFeatureSize = fimgSize*5;
     double* idmFeature = new double[idmFeatureSize];
     Sketch* resampled = sketch->resample(resampleInterval);
-    cout<<"resampled"<<endl;
-    resampled->printContents();
+    //cout<<"resampled"<<endl;
+    //resampled->printContents();
+    //cout << "rs ns=" << resampled->getNumStrokes() << ", np=" << resampled->getNumPoints() << endl;
     Sketch* normalized = resampled->normalized();
-    cout<<"normalized"<<endl;
-    normalized->printContents();
+    //cout<<"normalized"<<endl;
+    //normalized->printContents();
     int *angleIndices;
 	double *angles;
 	int numAngles;
@@ -60,8 +62,8 @@ double* FeatureExtractor::extract()
 	setSketch(normalized);
 	coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
-	cout<<"transformed"<<endl;
-	transformed->printContents();
+	//cout<<"transformed"<<endl;
+	//transformed->printContents();
 	double** gfilter = gaussianFilter(hsize, sigma);
 
 	
@@ -100,10 +102,20 @@ double* FeatureExtractor::extract()
 
 	cout << "pixels = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
-		cout << pixels[i] << endl;
+		cout << pixels1[i] << endl;
 	}*/
 	
 
+	for (int i = 0; i < gridSize; ++i) {
+		for (int j = 0; j < gridSize; ++j) {
+			idmFeature[i*gridSize+j] = featImage1[i][j];
+			idmFeature[fimgSize+i*gridSize+j] = featImage2[i][j];
+			idmFeature[2*fimgSize+i*gridSize+j] = featImage3[i][j];
+			idmFeature[3*fimgSize+i*gridSize+j] = featImage4[i][j];
+			idmFeature[4*fimgSize+i*gridSize+j] = featImage5[i][j];
+		}
+	}
+	
     return idmFeature;
 }
 
@@ -131,10 +143,9 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 				angleEnd = numAngles;
 				strokeEnd = numOfPoints;
 			}
-			cout<<"pointsToImage "<<i<<endl;
+			//cout<<"pointsToImage "<<i<<endl;
 			pointsToImage(pixels, angleIndices, sCoords, gridSize, strokeStart, strokeEnd, angleStart, angleEnd, featim);
 		}
-		
 	}
 	else
 	{
@@ -156,7 +167,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 	}
 
 
-    cout<<"featureImage: "<<endl;
+    /*cout<<"featureImage: "<<endl;
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
 		for(int j = 0; j < 2*gridSize; ++j)
@@ -164,10 +175,10 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			cout<<featim[i][j]<< " ";
 		}
 		cout<<endl;
-	}
-
+	}*/
+	
 	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
-	cout<<"smoothed: "<<endl;
+	/*cout<<"smoothed: "<<endl;
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
 		for(int j = 0; j < 2*gridSize; ++j)
@@ -175,10 +186,10 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			cout<<smoothed[i][j]<< " ";
 		}
 		cout<<endl;
-	}
+	}*/
 
 	double** downsampled = downsample(smoothed, gridSize);
-	cout<<"downsampled: "<<endl;
+	/*cout<<"downsampled: "<<endl;
 	for(int i = 0; i < gridSize; ++i)
 	{
 		for(int j = 0; j < gridSize; ++j)
@@ -191,7 +202,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 	cout << "pixels = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
 		cout << pixels[i] << endl;
-	}
+	}*/
 	return featim; 
 }
 
@@ -214,7 +225,7 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
      for(int i = 0; i <= hsize; ++i) // Loop to normalize the kernel
         for(int j = 0; j <= hsize; ++j)
             gfilter[i][j] /= sum;
-    cout<<"gaussianFilter size "<<hsize+1<<endl;
+    //cout<<"gaussianFilter size "<<hsize+1<<endl;
     return gfilter;
 }
 
@@ -280,7 +291,7 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image)
 {
 	int numOfAngles = angleEnd - angleStart;
-	cout<<"number of angles"<<numOfAngles<<endl;
+	//cout<<"number of angles"<<numOfAngles<<endl;
 	if(numOfAngles == 0)
 	{
 		return;
@@ -452,10 +463,10 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
       y = cum(q, y1, '-');
     }
   }
-   cout<<"bresenham angle index "<<angleIndex<<endl;
+  //cout<<"bresenham angle index "<<angleIndex<<endl;
   for(int i = 0; i < x.size(); ++i)
   {
-        cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
+		//cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
         if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
         {
         	image[ y[i] ][ x[i] ] = pixels[angleIndex];
@@ -559,10 +570,10 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
         and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
       */
     double* minDist = getMinAngleDistance(angles, curAngle, curAngle2, numAngles );
-    cout << "diffs = " << endl;
+    /*cout << "diffs = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
 		cout << minDist[i] << endl;
-	}
+	}*/
 	double* pixValues = new double[numAngles];
 	double curPixel;
 	double angleThreshold = 45;

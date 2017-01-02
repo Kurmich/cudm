@@ -1,13 +1,19 @@
 #include "FeatureExtractor.h"
 
 int main() {
-	string filename = "ozan.sketch";
+	string filename = "0_1.sketch";
 	SketchIO example(filename);
 	Sketch* result = example.read();
-	result->printContents();
+	//result->printContents();
 	FeatureExtractor fe(result);
 	
-	fe.extract();
+	double *feat = fe.extract();
+	
+	cout << "features" << endl;
+	for (int i = 0; i < 720; ++i) {
+		cout << feat[i] << " ";
+	}
+	cout << endl;
 	/*
 	cout<<"maxX = "<<maxX<<" maxY "<<maxY<<" minX = "<<minX<<" minY = "<<minY<<endl;
 	
