@@ -3,8 +3,6 @@
 #include <string.h>
 #include <math.h>
 
-#define BLOCK_SIZE 16
-
 using namespace std;
 
 // sketch abstraction
@@ -232,24 +230,9 @@ Sketch* Sketch::resample(double rate) {
 	return resampled;
 }
 
-__global__ void transform_kernel_x(double *&coords_transformed, double *ptAdded, double *newRange, double *oldRangeX, double *newMin, double *minX) {
-	int el = blockIdx.x*blockDim.x + threadIdx.x;
-	
-	if ( el < *ptAdded) {
-		coords_transformed[2*el] = floor((coords_transformed[2*el] - *minX) * (*newRange) / (*oldRangeX) + *newMin);
-	}
-}
-
-__global__ void transform_kernel_y(double *&coords_transformed, double *ptAdded, double *newRange, double *oldRangeY, double *newMin, double *minY) {
-	int el = blockIdx.x*blockDim.x + threadIdx.x;
-	
-	if ( el < *ptAdded) {
-		coords_transformed[2*el+1] = floor((coords_transformed[2*el+1] - *minY) * (*newRange) / (*oldRangeY) + *newMin);
-	}
-}
-
 Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 {
+	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
 	double newMax = 23, newMin = 0;
 	double newRange = newMax - newMin;
 	double oldRangeX = maxX - minX;
@@ -262,7 +245,7 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 		transformed->strokeIndices[i] = strokeIndices[i];
 	}
 
-	/*for(int i = 0; i < ptAdded; ++i)
+	for(int i = 0; i < ptAdded; ++i)
 	{
 		if(oldRangeX != 0)
 		{
@@ -271,64 +254,14 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 		}
 		if(oldRangeY != 0)
 		{
+		//	cout<<"normal Y "<<coords[i][1] <<endl;
 			transformed->coords[i][1] = ((coords[i][1] - minY)*newRange/oldRangeY) + newMin;
 			transformed->coords[i][1] = floor(transformed->coords[i][1]);
+		//	cout<<"transformed Y "<<transformed->coords[i][1] <<endl;
 		}
-	}*/
-	
-	double *coords_device;
-	cudaMalloc( &coords_device, sizeof(double*)*ptAdded*2);
-	
-	for (int i = 0; i < ptAdded; ++i) {
-		cudaMemcpy( &coords_device[2*i], transformed->coords[i], sizeof(double)*2, cudaMemcpyHostToDevice);
 	}
-	
-	double* ptAdded_device;
-	cudaMalloc( &ptAdded_device, sizeof(double));
-	cudaMemcpy( ptAdded_device, &ptAdded, sizeof(double), cudaMemcpyHostToDevice);
-	double* newRange_device;
-	cudaMalloc( &newRange_device, sizeof(double));
-	cudaMemcpy( newRange_device, &newRange, sizeof(double), cudaMemcpyHostToDevice);
-	double* newMin_device;
-	cudaMalloc( &newMin_device, sizeof(double));
-	cudaMemcpy( newMin_device, &newMin, sizeof(double), cudaMemcpyHostToDevice);
-	
-	if (oldRangeX != 0) {
-		double* oldRangeX_device;
-		cudaMalloc( &oldRangeX_device, sizeof(double));
-		cudaMemcpy( oldRangeX_device, &oldRangeX, sizeof(double), cudaMemcpyHostToDevice);
-		double* minX_device;
-		cudaMalloc( &minX_device, sizeof(double));
-		cudaMemcpy( minX_device, &minX, sizeof(double), cudaMemcpyHostToDevice);
-		
-		transform_kernel_x<<<ptAdded / BLOCK_SIZE + (ptAdded % BLOCK_SIZE == 0 ? 0 : 1),BLOCK_SIZE>>>(coords_device, ptAdded_device, newRange_device, oldRangeX_device, newMin_device, minX_device);
-		
-		cudaFree(oldRangeX_device);
-		cudaFree(minX_device);
-	}
-	
-	if (oldRangeY != 0) {
-		double* oldRangeY_device;
-		cudaMalloc( &oldRangeY_device, sizeof(double));
-		cudaMemcpy( oldRangeY_device, &oldRangeY, sizeof(double), cudaMemcpyHostToDevice);
-		double* minY_device;
-		cudaMalloc( &minY_device, sizeof(double));
-		cudaMemcpy( minY_device, &minY, sizeof(double), cudaMemcpyHostToDevice);
-	
-		transform_kernel_x<<<ptAdded / BLOCK_SIZE + (ptAdded % BLOCK_SIZE == 0 ? 0 : 1),BLOCK_SIZE>>>(coords_device, ptAdded_device, newRange_device, oldRangeY_device, newMin_device, minY_device);
-		
-		cudaFree(oldRangeY_device);
-		cudaFree(minY_device);
-	}
-	
-	for (int i = 0; i < ptAdded; ++i) {
-		cudaMemcpy( &(transformed->coords[i]), &coords_device[2*i], sizeof(double)*2, cudaMemcpyDeviceToHost);
-	}
-	
-	cudaFree(ptAdded_device);
-	cudaFree(newRange_device);
-	cudaFree(newMin_device);
-	
+	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
+
 	return transformed;
 }
 
