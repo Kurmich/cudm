@@ -232,6 +232,7 @@ Sketch* Sketch::resample(double rate) {
 
 Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 {
+	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
 	double newMax = 23, newMin = 0;
 	double newRange = newMax - newMin;
 	double oldRangeX = maxX - minX;
@@ -253,10 +254,13 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 		}
 		if(oldRangeY != 0)
 		{
+		//	cout<<"normal Y "<<coords[i][1] <<endl;
 			transformed->coords[i][1] = ((coords[i][1] - minY)*newRange/oldRangeY) + newMin;
 			transformed->coords[i][1] = floor(transformed->coords[i][1]);
+		//	cout<<"transformed Y "<<transformed->coords[i][1] <<endl;
 		}
 	}
+	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
 
 	return transformed;
 }

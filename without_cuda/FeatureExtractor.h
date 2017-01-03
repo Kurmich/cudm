@@ -306,6 +306,7 @@ void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double**
 		x2 = sCoords[pointIndex+1][0];
 		y1 = sCoords[pointIndex][1];
 		y2 = sCoords[pointIndex+1][1];
+		cout<< " x1 " << x1 << " x2 " <<x2 << " y1 "<<y1 << " y2 " << y2 << endl;
 		if(pixels[angleIndex] > 0)
 		{
 			drawBresenham(  x1,  y1, x2, y2, pixels, angleIndex, image );
@@ -463,10 +464,11 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
       y = cum(q, y1, '-');
     }
   }
-  //cout<<"bresenham angle index "<<angleIndex<<endl;
+  cout<<"Hello"<<endl;
+ // cout<<"bresenham angle index "<<angleIndex<<endl;
   for(int i = 0; i < x.size(); ++i)
   {
-		//cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
+		cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
         if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
         {
         	image[ y[i] ][ x[i] ] = pixels[angleIndex];
@@ -515,7 +517,10 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 			//Get differences both in x and y directions
 			diffy = sCoords[pt][1] - sCoords[pt-1][1];
 			diffx = sCoords[pt][0] - sCoords[pt-1][0];
-			
+			minX = min(minX, sCoords[pt][0]);
+			minY = min(minY, sCoords[pt][1]);
+			maxX = max(maxX, sCoords[pt][0]);
+			maxY = max(maxY, sCoords[pt][1]);
 			//Compute angle
 			angle = atan2(diffy,diffx);
 			angle = fmod( (angle + 2*PI), (2*PI));
