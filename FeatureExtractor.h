@@ -103,13 +103,13 @@ double* FeatureExtractor::extract()
 	
 	double *pixels = pixelValues(angles,curAngles,curAngles2,numAngles);
 	
-	for (int i = 0; i < 4*numAngles; ++i) {
+	/*for (int i = 0; i < 4*numAngles; ++i) {
 		if ( i % numAngles == 0) {
 			cout << endl << endl;
 		}
 		
 		cout << pixels[i] << " ";
-	}
+	}*/
 	
 	//int curAngle = 0;
 	//int curAngle2 = (curAngle + 180)%360;
@@ -522,11 +522,29 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
   //cout<<dx<< " " <<dy<<endl;
 }
 
+__global__ void coords2angles_kernel(double *sCoords_x, double *sCoords_y, double *angles, int *strokes, int *strokeIndices, int *numOfPoints) {
+	int pt = blockIdx.x*blockDim.x + threadIdx.x;
+	
+	if (pt < *numOfPoints && strokeIndices[strokes[pt]] < pt) {
+		//Get differences both in x and y directions
+		double diffy = sCoords_y[pt] - sCoords_y[pt-1];
+		double diffx = sCoords_x[pt] - sCoords_x[pt-1];
+		//Compute angle
+		double angle = atan2(diffy,diffx);
+		angle = fmod( (angle + 2*PI), (2*PI));
+		angle *= 180.0/PI;
+
+		//Assign current angle
+		angles[pt-(1+strokes[pt])] = angle;
+	}
+}
 
 void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles) {
 	//Get stroke coordinates and indices
 	int *sIndices = sketch->getStrokeIndices();
 	double **sCoords = sketch->getCoords();
+	int numOfStrokes = sketch->getNumStrokes();
+	int numOfPoints = sketch->getNumPoints();
 	
 	//Initialize 
 	angleIndices = new int[sketch->getNumStrokes()];
@@ -534,13 +552,11 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 	angles = new double[numOfAngles];
 	
 	int lastIndex;
-	double angle,diffy,diffx;
-	int curAngleIndex;
-	//minX = sCoords[0][0];
-	//maxX = sCoords[0][0];
-	//minY = sCoords[0][1];
-	//maxY = sCoords[0][1];
-	for (int str = 0; str < sketch->getNumStrokes(); ++str) {
+	//double angle,diffy,diffx;
+	//int curAngleIndex;
+	int *strokes = new int[numOfPoints];
+	
+	/*for (int str = 0; str < sketch->getNumStrokes(); ++str) {
 		//Get last index of current stroke
 		if (str == sketch->getNumStrokes() - 1) {
 			lastIndex = sketch->getNumPoints();
@@ -553,19 +569,10 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 		angleIndices[str] = sIndices[str]-str;
 		//Starting index of angles to fill
 		curAngleIndex = angleIndices[str];
-		//update maxs and mins
-		//minX = min(minX, sCoords[sIndices[str]][0]);
-		//minY = min(minY, sCoords[sIndices[str]][1]);
-		//maxX = max(maxX, sCoords[sIndices[str]][0]);
-		//maxY = max(maxY, sCoords[sIndices[str]][1]);
 		for (int pt = sIndices[str]+1; pt < lastIndex; ++pt) {
 			//Get differences both in x and y directions
 			diffy = sCoords[1][pt] - sCoords[1][pt-1];
 			diffx = sCoords[0][pt] - sCoords[0][pt-1];
-			//minX = min(minX, sCoords[pt][0]);
-			//minY = min(minY, sCoords[pt][1]);
-			//maxX = max(maxX, sCoords[pt][0]);
-			//maxY = max(maxY, sCoords[pt][1]);
 			//Compute angle
 			angle = atan2(diffy,diffx);
 			angle = fmod( (angle + 2*PI), (2*PI));
@@ -574,7 +581,54 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 			//Assign current angle
 			angles[curAngleIndex++] = angle;
 		}
+	}*/
+	
+	for (int str = 0; str < numOfStrokes; ++str) {
+		angleIndices[str] = sIndices[str] - str;
+		
+		if (str == numOfStrokes - 1) {
+			lastIndex = numOfPoints;
+		}
+		else {
+			lastIndex = sIndices[str+1];
+		}
+		
+		for (int pt = sIndices[str]; pt < lastIndex; ++pt) {
+			strokes[pt] = str;
+		}
 	}
+	
+	double *sCoords_x_device;
+	cudaMalloc( &sCoords_x_device, sizeof(double)*numOfPoints);
+	cudaMemcpy( sCoords_x_device, sCoords[0], sizeof(double)*numOfPoints, cudaMemcpyHostToDevice);
+	double *sCoords_y_device;
+	cudaMalloc( &sCoords_y_device, sizeof(double)*numOfPoints);
+	cudaMemcpy( sCoords_y_device, sCoords[1], sizeof(double)*numOfPoints, cudaMemcpyHostToDevice);
+	double *angles_device;
+	cudaMalloc( &angles_device, sizeof(double)*numOfAngles);
+	int *numOfPoints_device;
+	cudaMalloc( &numOfPoints_device, sizeof(int));
+	cudaMemcpy( numOfPoints_device, &numOfPoints, sizeof(int), cudaMemcpyHostToDevice);
+	int *strokes_device;
+	cudaMalloc( &strokes_device, sizeof(int)*numOfPoints);
+	cudaMemcpy( strokes_device, strokes, sizeof(int)*numOfPoints, cudaMemcpyHostToDevice);
+	int *strokeIndices_device;
+	cudaMalloc( &strokeIndices_device, sizeof(int)*numOfStrokes);
+	cudaMemcpy( strokeIndices_device, sIndices, sizeof(int)*numOfStrokes, cudaMemcpyHostToDevice);
+	
+	int itemsPerBlock = numOfPoints / BLOCK_SIZE + (numOfPoints % BLOCK_SIZE == 0 ? 0 : 1);
+	coords2angles_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,angles_device,strokes_device,strokeIndices_device,numOfPoints_device);
+	
+	cudaMemcpy( angles, angles_device, sizeof(double)*numOfAngles, cudaMemcpyDeviceToHost);
+	
+	cudaFree( angles_device);
+	cudaFree( sCoords_x_device);
+	cudaFree( sCoords_y_device);
+	cudaFree( numOfPoints_device);
+	cudaFree( strokes_device);
+	cudaFree( strokeIndices_device);
+	
+	delete [] strokes;
 }
 
 double FeatureExtractor::truncate(double curDiff)
