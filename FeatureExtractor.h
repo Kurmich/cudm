@@ -99,49 +99,11 @@ double* FeatureExtractor::extract()
 	//transformed->printContents();
 	double** gfilter = gaussianFilter(hsize, sigma);
 	
-	/*for (int i = 0; i < 4*numAngles; ++i) {
-		if ( i % numAngles == 0) {
-			cout << endl << endl;
-		}
-		
-		cout << pixels[i] << " ";
-	}*/
-	
-	//int curAngle = 0;
-	//int curAngle2 = (curAngle + 180)%360;
-	//double* pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
 	double** featImage1 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-	
-	//curAngle = 45;
-	//curAngle2 = (curAngle + 180)%360;
-	//double* pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
 	double** featImage2 = extractFeatureImage(gfilter,&pixels[numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-	
-	//curAngle = 90;
-	//curAngle2 = (curAngle + 180)%360;
-	//double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
 	double** featImage3 = extractFeatureImage(gfilter,&pixels[2*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-	
-	//curAngle = 135;
-	//curAngle2 = (curAngle + 180)%360;
-	//double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
 	double** featImage4 = extractFeatureImage(gfilter,&pixels[3*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-
 	double** featImage5 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
-	/*
-	for(int i = 0; i < 2*gridSize; ++i)
-	{
-		for(int j = 0; j < 2*gridSize; ++j)
-		{
-			cout<<featImage1[i][j]<< " ";
-		}
-		cout<<endl;
-	}
-
-	cout << "pixels = " << endl;
-	for (int i = 0; i < numAngles; ++i) {
-		cout << pixels1[i] << endl;
-	}*/
 	
 	delete [] pixels;
 	delete [] curAngles;
@@ -206,44 +168,10 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			featim[ (int)sCoords[1][strokeEnd] ][ (int)sCoords[0][strokeEnd] ] = 1;
 		}
 	}
-
-
-    /*cout<<"featureImage: "<<endl;
-	for(int i = 0; i < 2*gridSize; ++i)
-	{
-		for(int j = 0; j < 2*gridSize; ++j)
-		{
-			cout<<featim[i][j]<< " ";
-		}
-		cout<<endl;
-	}*/
 	
 	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
-	/*cout<<"smoothed: "<<endl;
-	for(int i = 0; i < 2*gridSize; ++i)
-	{
-		for(int j = 0; j < 2*gridSize; ++j)
-		{
-			cout<<smoothed[i][j]<< " ";
-		}
-		cout<<endl;
-	}*/
-
 	double** downsampled = downsample(smoothed, gridSize);
-	/*cout<<"downsampled: "<<endl;
-	for(int i = 0; i < gridSize; ++i)
-	{
-		for(int j = 0; j < gridSize; ++j)
-		{
-			cout<<downsampled[i][j]<< " ";
-		}
-		cout<<endl;
-	}
-
-	cout << "pixels = " << endl;
-	for (int i = 0; i < numAngles; ++i) {
-		cout << pixels[i] << endl;
-	}*/
+	
 	return featim; 
 }
 
@@ -592,36 +520,7 @@ void FeatureExtractor::coords2pixels(int *&angleIndices, double *curAngles, doub
 	pixValues = new double[numOfAngles*4];
 	
 	int lastIndex;
-	//double angle,diffy,diffx;
-	//int curAngleIndex;
 	int *strokes = new int[numOfPoints];
-	
-	/*for (int str = 0; str < sketch->getNumStrokes(); ++str) {
-		//Get last index of current stroke
-		if (str == sketch->getNumStrokes() - 1) {
-			lastIndex = sketch->getNumPoints();
-		}
-		else {
-			lastIndex = sIndices[str+1];
-		}
-		
-		//Assign start index of angles for this stroke
-		angleIndices[str] = sIndices[str]-str;
-		//Starting index of angles to fill
-		curAngleIndex = angleIndices[str];
-		for (int pt = sIndices[str]+1; pt < lastIndex; ++pt) {
-			//Get differences both in x and y directions
-			diffy = sCoords[1][pt] - sCoords[1][pt-1];
-			diffx = sCoords[0][pt] - sCoords[0][pt-1];
-			//Compute angle
-			angle = atan2(diffy,diffx);
-			angle = fmod( (angle + 2*PI), (2*PI));
-			angle *= 180.0/PI;
-
-			//Assign current angle
-			angles[curAngleIndex++] = angle;
-		}
-	}*/
 	
 	for (int str = 0; str < numOfStrokes; ++str) {
 		angleIndices[str] = sIndices[str] - str;
