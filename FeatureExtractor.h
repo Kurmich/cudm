@@ -11,7 +11,7 @@ class FeatureExtractor {
 		Sketch* sketch;
 	public:
 		FeatureExtractor(Sketch* sketch);
-		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles, double &maxX, double &maxY, double &minX, double &minY);
+		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles);
 		double* getMinAngleDistance(double *angles, double curAngle, double curAngle2, int numAngles);
 		double truncate(double curDiff);
 		double* pixelValues(double *angles, double* curAngles, double* curAngles2, int numAngles);
@@ -23,6 +23,7 @@ class FeatureExtractor {
 		double** init2Darray(int size);
 		double** extractFeatureImage(double** gfilter, double* pixels, int* angleIndices, int numAngles, Sketch* transformed,  int hsize, int gridSize, bool endpt);
 		void pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image);
+		void findExtremum(double &maxX, double &maxY, double &minX, double &minY);
 		double** downsample(double** image, double gridSize);
 		double** gaussianFilter(int hsize, double sigma);
 		double** smoothim(double **image, double** fgauss, int hsize, int gridSize);
@@ -33,6 +34,34 @@ FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
 void FeatureExtractor::setSketch(Sketch* newSketch)
 {
 	sketch = newSketch;
+}
+
+void FeatureExtractor::findExtremum(double &maxX, double &maxY, double &minX, double &minY) {
+	double** sCoords = sketch->getCoords();
+	int numPoints = sketch->getNumPoints();
+	
+	minX = sCoords[0][0];
+	minY = sCoords[0][1];
+	maxX = sCoords[0][0];
+	maxY = sCoords[0][1];
+	
+	for (int i = 1; i < numPoints; ++i) {
+		if (minX > sCoords[i][0]) {
+			minX = sCoords[i][0];
+		}
+		
+		if (minY > sCoords[i][1]) {
+			minY = sCoords[i][1];
+		}
+		
+		if (maxX < sCoords[i][0]) {
+			maxX = sCoords[i][0];
+		}
+		
+		if (maxY < sCoords[i][1]) {
+			maxY = sCoords[i][1];
+		}
+	}
 }
 
 double* FeatureExtractor::extract()
@@ -58,7 +87,8 @@ double* FeatureExtractor::extract()
 	double minX, minY, maxX, maxY;
 	int numOfStrokes = normalized->getNumStrokes();
 	setSketch(normalized);
-	coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
+	findExtremum(maxX,maxY,minX,minY);
+	coords2angles(angleIndices,angles,numAngles);
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
 	//cout<<"transformed"<<endl;
 	//transformed->printContents();
@@ -494,7 +524,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 }
 
 
-void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles, double &maxX, double &maxY, double &minX, double &minY) {
+void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles) {
 	//Get stroke coordinates and indices
 	int *sIndices = sketch->getStrokeIndices();
 	double **sCoords = sketch->getCoords();
@@ -507,10 +537,10 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 	int lastIndex;
 	double angle,diffy,diffx;
 	int curAngleIndex;
-	minX = sCoords[0][0];
-	maxX = sCoords[0][0];
-	minY = sCoords[0][1];
-	maxY = sCoords[0][1];
+	//minX = sCoords[0][0];
+	//maxX = sCoords[0][0];
+	//minY = sCoords[0][1];
+	//maxY = sCoords[0][1];
 	for (int str = 0; str < sketch->getNumStrokes(); ++str) {
 		//Get last index of current stroke
 		if (str == sketch->getNumStrokes() - 1) {
@@ -525,18 +555,18 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 		//Starting index of angles to fill
 		curAngleIndex = angleIndices[str];
 		//update maxs and mins
-		minX = min(minX, sCoords[sIndices[str]][0]);
-		minY = min(minY, sCoords[sIndices[str]][1]);
-		maxX = max(maxX, sCoords[sIndices[str]][0]);
-		maxY = max(maxY, sCoords[sIndices[str]][1]);
+		//minX = min(minX, sCoords[sIndices[str]][0]);
+		//minY = min(minY, sCoords[sIndices[str]][1]);
+		//maxX = max(maxX, sCoords[sIndices[str]][0]);
+		//maxY = max(maxY, sCoords[sIndices[str]][1]);
 		for (int pt = sIndices[str]+1; pt < lastIndex; ++pt) {
 			//Get differences both in x and y directions
 			diffy = sCoords[pt][1] - sCoords[pt-1][1];
 			diffx = sCoords[pt][0] - sCoords[pt-1][0];
-			minX = min(minX, sCoords[pt][0]);
-			minY = min(minY, sCoords[pt][1]);
-			maxX = max(maxX, sCoords[pt][0]);
-			maxY = max(maxY, sCoords[pt][1]);
+			//minX = min(minX, sCoords[pt][0]);
+			//minY = min(minY, sCoords[pt][1]);
+			//maxX = max(maxX, sCoords[pt][0]);
+			//maxY = max(maxY, sCoords[pt][1]);
 			//Compute angle
 			angle = atan2(diffy,diffx);
 			angle = fmod( (angle + 2*PI), (2*PI));
