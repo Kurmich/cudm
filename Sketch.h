@@ -248,7 +248,7 @@ __global__ void transform_kernel_y(double *&coords_transformed, double *ptAdded,
 	}
 }
 
-Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY, int *&sIndices, double **&sCoords)
+Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 {
 	double newMax = 23, newMin = 0;
 	double newRange = newMax - newMin;
