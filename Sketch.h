@@ -36,20 +36,27 @@ class Sketch {
 
 // constructor
 Sketch::Sketch(int numPoints,int numStrokes) : numPoints(numPoints), numStrokes(numStrokes), ptAdded(0), strAdded(0) {
-	coords = new double*[numPoints];			// allocation of coordinate array
-	for ( int i = 0; i < numPoints; ++i) {
-		coords[i] = new double[2];
-	}
+	//coords = new double*[numPoints];			// allocation of coordinate array
+	//for ( int i = 0; i < numPoints; ++i) {
+		//coords[i] = new double[2];
+	//}
+	
+	coords = new double*[2];
+	coords[0] = new double[numPoints];
+	coords[1] = new double[numPoints];
 	
 	strokeIndices = new int[numStrokes];		// allocation of stroke indices array
 }
 
 // destructor
 Sketch::~Sketch() {
+	/*
 	for ( int i = 0; i < numPoints; ++i) {		// deallocation of coordinate array
 		delete [] coords[i];
-	}
+	}*/
 	
+	delete [] coords[0];
+	delete [] coords[1];
 	delete [] coords;
 	
 	delete [] strokeIndices;					// deallocation of stroke indices array
@@ -62,8 +69,8 @@ void Sketch::getCentroid(double &x, double &y) {
 		double ysum = 0;						// and return them in parameters
 		
 		for (int i = 0; i < ptAdded; ++i) {
-			xsum += coords[i][0];
-			ysum += coords[i][1];
+			xsum += coords[0][i];
+			ysum += coords[1][i];
 		}
 		
 		xsum /= numPoints;
@@ -86,8 +93,8 @@ void Sketch::getStd(double &x, double &y) {
 																// by just applying the defn. of
 		double xsqsum = 0,ysqsum = 0;							// standard deviation
 		for ( int i = 0; i < ptAdded; ++i) {
-			xsqsum += (coords[i][0] - cx)*(coords[i][0] - cx);
-			ysqsum += (coords[i][1] - cy)*(coords[i][1] - cy);
+			xsqsum += (coords[0][i] - cx)*(coords[0][i] - cx);
+			ysqsum += (coords[1][i] - cy)*(coords[1][i] - cy);
 		}
 		
 		xsqsum /= numPoints;
@@ -109,7 +116,7 @@ double Sketch::findMaxDistance() {
 	double maxdist = -1;
 	double curdist;
 	for (int i = 0; i < ptAdded; ++i) {
-		curdist = (coords[i][1] - y)*(coords[i][1] - y) + (coords[i][0] - x)*(coords[i][0] - x);
+		curdist = (coords[1][i] - y)*(coords[1][i] - y) + (coords[0][i] - x)*(coords[0][i] - x);
 		
 		if (curdist > maxdist) {
 			maxdist = curdist;
@@ -147,7 +154,7 @@ Sketch* Sketch::normalized() {
 		// and normalize coordinates in both axes by their 
 		// corresponding std.
 		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
-			newSketch->addPoint((coords[j][0]-cx)/stdx,(coords[j][1]-cy)/stdy);
+			newSketch->addPoint((coords[0][j]-cx)/stdx,(coords[1][j]-cy)/stdy);
 		}
 	}
 	
@@ -178,7 +185,7 @@ Sketch* Sketch::resample(double rate) {
 		
 		for (int j = strokeIndices[i]+1; j < upperBound; ++j) {
 			// count the # of points between every point
-			dist = sqrt((coords[j][0]-coords[j-1][0])*(coords[j][0]-coords[j-1][0]) + (coords[j][1]-coords[j-1][1])*(coords[j][1]-coords[j-1][1]));
+			dist = sqrt((coords[0][j]-coords[0][j-1])*(coords[0][j]-coords[0][j-1]) + (coords[1][j]-coords[1][j-1])*(coords[1][j]-coords[1][j-1]));
 			//cout << newNumPoints << endl;
 			newNumPoints += (int) (ceil(dist / samplingInterval));
 		}
@@ -192,8 +199,8 @@ Sketch* Sketch::resample(double rate) {
 		// before I start resampling, I need to open a stroke
 		resampled->openStroke();
 		
-		prevx = coords[strokeIndices[i]][0];
-		prevy = coords[strokeIndices[i]][1];
+		prevx = coords[0][strokeIndices[i]];
+		prevy = coords[1][strokeIndices[i]];
 		
 		resampled->addPoint(prevx,prevy);
 		
@@ -208,12 +215,12 @@ Sketch* Sketch::resample(double rate) {
 		// interval, unless the lastly added point is closer than this
 		// interval
 		for (int j = strokeIndices[i]+1; j < upperBound; ++j) {
-			sampdistance = sqrt((coords[j][0]-prevx)*(coords[j][0]-prevx) + (coords[j][1]-prevy)*(coords[j][1]-prevy));
+			sampdistance = sqrt((coords[0][j]-prevx)*(coords[0][j]-prevx) + (coords[1][j]-prevy)*(coords[1][j]-prevy));
 			
 			while (sampdistance > samplingInterval) {
 				cx = prevx;
 				cy = prevy;
-				angle = atan2(coords[j][1]-cy, coords[j][0]-cx);
+				angle = atan2(coords[1][j]-cy, coords[0][j]-cx);
 				newx = cos(angle)*samplingInterval + cx;
 				newy = sin(angle)*samplingInterval + cy;
 				prevx = newx;
@@ -222,7 +229,7 @@ Sketch* Sketch::resample(double rate) {
 				// add the new sampled point
 				resampled->addPoint(newx,newy);
 				
-				sampdistance = sqrt((coords[j][0]-prevx)*(coords[j][0]-prevx) + (coords[j][1]-prevy)*(coords[j][1]-prevy));
+				sampdistance = sqrt((coords[0][j]-prevx)*(coords[0][j]-prevx) + (coords[1][j]-prevy)*(coords[1][j]-prevy));
 			}
 		}
 	}
@@ -249,14 +256,14 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 	{
 		if(oldRangeX != 0)
 		{
-			transformed->coords[i][0] = ((coords[i][0] - minX)*newRange/oldRangeX) + newMin;
-			transformed->coords[i][0] = floor(transformed->coords[i][0]);
+			transformed->coords[0][i] = ((coords[0][i] - minX)*newRange/oldRangeX) + newMin;
+			transformed->coords[0][i] = floor(transformed->coords[0][i]);
 		}
 		if(oldRangeY != 0)
 		{
 		//	cout<<"normal Y "<<coords[i][1] <<endl;
-			transformed->coords[i][1] = ((coords[i][1] - minY)*newRange/oldRangeY) + newMin;
-			transformed->coords[i][1] = floor(transformed->coords[i][1]);
+			transformed->coords[1][i] = ((coords[1][i] - minY)*newRange/oldRangeY) + newMin;
+			transformed->coords[1][i] = floor(transformed->coords[1][i]);
 		//	cout<<"transformed Y "<<transformed->coords[i][1] <<endl;
 		}
 	}
@@ -270,8 +277,8 @@ void Sketch::addPoint(double x, double y) {
 	// if we haven't completely filled up our sketch
 	if (ptAdded < numPoints) {
 		// add the given point
-		coords[ptAdded][0] = x;
-		coords[ptAdded++][1] = y;
+		coords[0][ptAdded] = x;
+		coords[1][ptAdded++] = y;
 	}
 	else {
 		// otherwise give an error message
@@ -307,7 +314,7 @@ void Sketch::printContents() {
 		}
 		
 		for ( int j = strokeIndices[i]; j < upperBound; ++j) {
-			cout << "(" << coords[j][0] << "," << coords[j][1] << ")";
+			cout << "(" << coords[0][j] << "," << coords[1][j] << ")";
 			
 			if ( j < upperBound - 1) {
 				cout << "-";
