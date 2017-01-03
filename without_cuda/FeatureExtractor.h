@@ -306,7 +306,7 @@ void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double**
 		x2 = sCoords[pointIndex+1][0];
 		y1 = sCoords[pointIndex][1];
 		y2 = sCoords[pointIndex+1][1];
-		cout<< " x1 " << x1 << " x2 " <<x2 << " y1 "<<y1 << " y2 " << y2 << endl;
+		//cout<< " x1 " << x1 << " x2 " <<x2 << " y1 "<<y1 << " y2 " << y2 << endl;
 		if(pixels[angleIndex] > 0)
 		{
 			drawBresenham(  x1,  y1, x2, y2, pixels, angleIndex, image );
@@ -464,11 +464,11 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
       y = cum(q, y1, '-');
     }
   }
-  cout<<"Hello"<<endl;
+  //cout<<"Hello"<<endl;
  // cout<<"bresenham angle index "<<angleIndex<<endl;
   for(int i = 0; i < x.size(); ++i)
   {
-		cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
+		//cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
         if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
         {
         	image[ y[i] ][ x[i] ] = pixels[angleIndex];
@@ -552,7 +552,7 @@ double* FeatureExtractor::getMinAngleDistance(double* angles, double curAngle, d
 {
 	//Initialize array of angle distances
 	double* diff = new double[numAngles];
-	int curDiff, curDiff2;
+	double curDiff, curDiff2;
 	for(int i = 0; i < numAngles; ++i)
 	{
 		//get angle distances relative to current angles
@@ -575,10 +575,11 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
         and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
       */
     double* minDist = getMinAngleDistance(angles, curAngle, curAngle2, numAngles );
-    /*cout << "diffs = " << endl;
+    cout << "diffs = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
-		cout << minDist[i] << endl;
-	}*/
+		cout << minDist[i] << " ";
+	}
+	cout << endl;
 	double* pixValues = new double[numAngles];
 	double curPixel;
 	double angleThreshold = 45;
@@ -595,7 +596,9 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 			curPixel = 0;
 		}
 		pixValues[i] = curPixel;
+		cout << pixValues[i] << " ";
 	}
+	cout << endl;
 
 	return pixValues;
 }
