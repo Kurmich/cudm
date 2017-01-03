@@ -575,10 +575,10 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
         and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
       */
     double* minDist = getMinAngleDistance(angles, curAngle, curAngle2, numAngles );
-    cout << "diffs = " << endl;
+    /*cout << "diffs = " << endl;
 	for (int i = 0; i < numAngles; ++i) {
 		cout << minDist[i] << " ";
-	}
+	}*/
 	cout << endl;
 	double* pixValues = new double[numAngles];
 	double curPixel;

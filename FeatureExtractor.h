@@ -14,7 +14,7 @@ class FeatureExtractor {
 		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles, double &maxX, double &maxY, double &minX, double &minY);
 		double* getMinAngleDistance(double *angles, double curAngle, double curAngle2, int numAngles);
 		double truncate(double curDiff);
-		double* pixelValues(double *angles, double curAngle, double curAngle2, int numAngles);
+		double* pixelValues(double *angles, double* curAngles, double* curAngles2, int numAngles);
 		double* extract();
 		void setSketch(Sketch* newSketch);
 		vector<int> arange(int a, int b, int step);
@@ -42,7 +42,6 @@ double* FeatureExtractor::extract()
     double sigma = 10.0;
     int hsize = 4.0;
     int gridSize = 12;
-    // const double angles[] = {0, 45, 90, 135, 180 };
 	int fimgSize = gridSize*gridSize;
     int idmFeatureSize = fimgSize*5;
     double* idmFeature = new double[idmFeatureSize];
@@ -64,31 +63,46 @@ double* FeatureExtractor::extract()
 	//cout<<"transformed"<<endl;
 	//transformed->printContents();
 	double** gfilter = gaussianFilter(hsize, sigma);
-
 	
-	int curAngle = 0;
-	int curAngle2 = (curAngle + 180)%360;
-	double* pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
-	double** featImage1 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-
-
-	curAngle = 45;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage2 = extractFeatureImage(gfilter,pixels2, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-
-
-	curAngle = 90;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage3 = extractFeatureImage(gfilter,pixels3, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	double* curAngles = new double[4];
+	double* curAngles2 = new double[4];
 	
-	curAngle = 135;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage4 = extractFeatureImage(gfilter,pixels4, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	for (int i = 0; i < 4; ++i) {
+		curAngles[i] = (double) i*45;
+		curAngles2[i] = (double) ((i*45 + 180) % 360);
+	}
+	
+	double *pixels = pixelValues(angles,curAngles,curAngles2,numAngles);
+	
+	for (int i = 0; i < 4*numAngles; ++i) {
+		if ( i % numAngles == 0) {
+			cout << endl << endl;
+		}
+		
+		cout << pixels[i] << " ";
+	}
+	
+	//int curAngle = 0;
+	//int curAngle2 = (curAngle + 180)%360;
+	//double* pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
+	double** featImage1 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	
+	//curAngle = 45;
+	//curAngle2 = (curAngle + 180)%360;
+	//double* pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage2 = extractFeatureImage(gfilter,&pixels[numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	
+	//curAngle = 90;
+	//curAngle2 = (curAngle + 180)%360;
+	//double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage3 = extractFeatureImage(gfilter,&pixels[2*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	
+	//curAngle = 135;
+	//curAngle2 = (curAngle + 180)%360;
+	//double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
+	double** featImage4 = extractFeatureImage(gfilter,&pixels[3*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
 
-	double** featImage5 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
+	double** featImage5 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
 	/*
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
@@ -104,6 +118,9 @@ double* FeatureExtractor::extract()
 		cout << pixels1[i] << endl;
 	}*/
 	
+	delete [] pixels;
+	delete [] curAngles;
+	delete [] curAngles2;
 
 	for (int i = 0; i < gridSize; ++i) {
 		for (int j = 0; j < gridSize; ++j) {
@@ -566,16 +583,35 @@ double* FeatureExtractor::getMinAngleDistance(double* angles, double curAngle, d
 	return diff;
 }
 
-__global__ void pixelValues_kernel(double *angles, double *curAngle, double *curAngle2, int *numAngles, double *pixValues, double *angleThreshold) {
+__global__ void pixelValues_kernel(double *angles, double *curAngles, double *curAngles2, int *numAngles, double *pixValues, double *angleThreshold) {
 	int i = blockIdx.x*blockDim.x + threadIdx.x;
 	
-	if (i < *numAngles) {
-		double angle = angles[i];
+	if (i < 4*(*numAngles)) {
+		double curAngle,curAngle2;
+		
+		if (i < *numAngles) {
+			curAngle = curAngles[0];
+			curAngle2 = curAngles2[0];
+		}
+		else if (i < 2*(*numAngles)) {
+			curAngle = curAngles[1];
+			curAngle2 = curAngles2[1];
+		}
+		else if (i < 3*(*numAngles)) {
+			curAngle = curAngles[2];
+			curAngle2 = curAngles2[2];
+		}
+		else {
+			curAngle = curAngles[3];
+			curAngle2 = curAngles2[3];
+		}
+		
+		double angle = angles[i % (*numAngles)];
 		double curPixel, diff;
 		
 		//get angle distances relative to current angles
-		double curDiff = angle - (*curAngle);
-		double curDiff2 = angle - (*curAngle2);
+		double curDiff = angle - curAngle;
+		double curDiff2 = angle - curAngle2;
 		//truncate angle distance between 0 and 180
 		if ( curDiff >= 180) {
 			curDiff -= 360;
@@ -619,7 +655,7 @@ __global__ void pixelValues_kernel(double *angles, double *curAngle, double *cur
 	}
 }
 
-double* FeatureExtractor::pixelValues(double* angles, double curAngle, double curAngle2, int numAngles)
+double* FeatureExtractor::pixelValues(double* angles, double* curAngles, double* curAngles2, int numAngles)
 {	/*
         Assign pixel values are calculated as a difference between stroke angle and the reference angle
         and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
@@ -629,7 +665,8 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 	for (int i = 0; i < numAngles; ++i) {
 		cout << minDist[i] << endl;
 	}*/
-	double* pixValues = new double[numAngles];
+	double* pixValues = new double[4*numAngles];
+	
 	//double curPixel;
 	double angleThreshold = 45;
 	//bool valid;
@@ -650,37 +687,40 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 	double *angles_device;
 	cudaMalloc( &angles_device, sizeof(double)*numAngles);
 	cudaMemcpy( angles_device, angles, sizeof(double)*numAngles, cudaMemcpyHostToDevice);
-	double *curAngle_device;
-	cudaMalloc( &curAngle_device, sizeof(double));
-	cudaMemcpy( curAngle_device, &curAngle, sizeof(double), cudaMemcpyHostToDevice);
-	double *curAngle2_device;
-	cudaMalloc( &curAngle2_device, sizeof(double));
-	cudaMemcpy( curAngle2_device, &curAngle2, sizeof(double), cudaMemcpyHostToDevice);
+	double *curAngles_device;
+	cudaMalloc( &curAngles_device, sizeof(double)*4);
+	cudaMemcpy( curAngles_device, curAngles, sizeof(double)*4, cudaMemcpyHostToDevice);
+	double *curAngles2_device;
+	cudaMalloc( &curAngles2_device, sizeof(double)*4);
+	cudaMemcpy( curAngles2_device, curAngles2, sizeof(double)*4, cudaMemcpyHostToDevice);
 	int *numAngles_device;
 	cudaMalloc( &numAngles_device, sizeof(int));
 	cudaMemcpy( numAngles_device, &numAngles, sizeof(int), cudaMemcpyHostToDevice);
 	double *pixValues_device;
-	cudaMalloc( &pixValues_device, sizeof(double)*numAngles);
+	cudaMalloc( &pixValues_device, sizeof(double)*numAngles*4);
 	double *angleThreshold_device;
 	cudaMalloc( &angleThreshold_device, sizeof(double));
 	cudaMemcpy( angleThreshold_device, &angleThreshold, sizeof(double), cudaMemcpyHostToDevice);
 	
-	int itemsPerBlock = numAngles / BLOCK_SIZE + (numAngles % BLOCK_SIZE == 0 ? 0 : 1);
-	pixelValues_kernel<<<itemsPerBlock,BLOCK_SIZE>>>( angles_device, curAngle_device, curAngle2_device, numAngles_device, pixValues_device, angleThreshold_device);
+	int itemsPerBlock = (numAngles*4) / BLOCK_SIZE + ((numAngles*4) % BLOCK_SIZE == 0 ? 0 : 1);
+	pixelValues_kernel<<<itemsPerBlock,BLOCK_SIZE>>>( angles_device, curAngles_device, curAngles2_device, numAngles_device, pixValues_device, angleThreshold_device);
 	
-	cudaMemcpy( pixValues, pixValues_device, sizeof(double)*numAngles, cudaMemcpyDeviceToHost);
+	cudaError_t execErr = cudaGetLastError();
+	if (execErr != cudaSuccess) cout << "ERROR: " << cudaGetErrorString(execErr) << endl;
+	
+	cudaMemcpy( pixValues, pixValues_device, sizeof(double)*numAngles*4, cudaMemcpyDeviceToHost);
 	
 	cudaFree(angles_device);
-	cudaFree(curAngle_device);
-	cudaFree(curAngle2_device);
+	cudaFree(curAngles_device);
+	cudaFree(curAngles2_device);
 	cudaFree(numAngles_device);
 	cudaFree(pixValues_device);
 	cudaFree(angleThreshold_device);
 	
-	for (int k = 0; k < numAngles; ++k) {
+	/*for (int k = 0; k < numAngles; ++k) {
 		cout << pixValues[k] << " ";
 	}
-	cout << endl;
+	cout << endl;*/
 
 	return pixValues;
 }
