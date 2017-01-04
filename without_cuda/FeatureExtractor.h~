@@ -405,10 +405,10 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
     int cumSum = 0;
     for(int i = floor(dx/2); i >= floor(dx/2) - dy*dx; i -= dy)
     {
-      cur = (i + (int) dx)%((int) dx);
+      cur = (i + dx)%dx;
       while(cur < 0)
       {
-        cur = (cur + (int) dx)%((int) dx);
+        cur = (cur + dx)%dx;
       }
       arr.push_back(cur);
      // cout<<cur<<endl;
