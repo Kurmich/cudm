@@ -29,6 +29,8 @@ class FeatureExtractor {
 
 FeatureExtractor::FeatureExtractor(Sketch* sketch) : sketch(sketch) {}
 
+
+
 void FeatureExtractor::setSketch(Sketch* newSketch)
 {
 	sketch = newSketch;
@@ -41,11 +43,17 @@ double* FeatureExtractor::extract()
     double sigma = 10.0;
     int hsize = 4.0;
     int gridSize = 12;
+    // const double angles[] = {0, 45, 90, 135, 180 };
 	int fimgSize = gridSize*gridSize;
     int idmFeatureSize = fimgSize*5;
     double* idmFeature = new double[idmFeatureSize];
     Sketch* resampled = sketch->resample(resampleInterval);
+    //cout<<"resampled"<<endl;
+    //resampled->printContents();
+    //cout << "rs ns=" << resampled->getNumStrokes() << ", np=" << resampled->getNumPoints() << endl;
     Sketch* normalized = resampled->normalized();
+    //cout<<"normalized"<<endl;
+    //normalized->printContents();
     int *angleIndices;
 	double *angles;
 	int numAngles;
@@ -54,6 +62,8 @@ double* FeatureExtractor::extract()
 	setSketch(normalized);
 	coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
+	//cout<<"transformed"<<endl;
+	//transformed->printContents();
 	double** gfilter = gaussianFilter(hsize, sigma);
 
 	
@@ -80,6 +90,21 @@ double* FeatureExtractor::extract()
 	double** featImage4 = extractFeatureImage(gfilter,pixels4, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
 
 	double** featImage5 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
+	/*
+	for(int i = 0; i < 2*gridSize; ++i)
+	{
+		for(int j = 0; j < 2*gridSize; ++j)
+		{
+			cout<<featImage1[i][j]<< " ";
+		}
+		cout<<endl;
+	}
+
+	cout << "pixels = " << endl;
+	for (int i = 0; i < numAngles; ++i) {
+		cout << pixels1[i] << endl;
+	}*/
+	
 
 	for (int i = 0; i < gridSize; ++i) {
 		for (int j = 0; j < gridSize; ++j) {
@@ -108,7 +133,6 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 		{
 			strokeStart = sIndices[i];
 			angleStart = angleIndices[i];
-			
 			if(i < numOfStrokes - 1 )
 			{
 				strokeEnd = sIndices[i+1];
@@ -119,7 +143,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 				angleEnd = numAngles;
 				strokeEnd = numOfPoints;
 			}
-			
+			//cout<<"pointsToImage "<<i<<endl;
 			pointsToImage(pixels, angleIndices, sCoords, gridSize, strokeStart, strokeEnd, angleStart, angleEnd, featim);
 		}
 	}
@@ -141,11 +165,44 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			featim[ (int)sCoords[strokeEnd][1] ][ (int)sCoords[strokeEnd][0] ] = 1;
 		}
 	}
+
+
+    /*cout<<"featureImage: "<<endl;
+	for(int i = 0; i < 2*gridSize; ++i)
+	{
+		for(int j = 0; j < 2*gridSize; ++j)
+		{
+			cout<<featim[i][j]<< " ";
+		}
+		cout<<endl;
+	}*/
 	
 	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
+	/*cout<<"smoothed: "<<endl;
+	for(int i = 0; i < 2*gridSize; ++i)
+	{
+		for(int j = 0; j < 2*gridSize; ++j)
+		{
+			cout<<smoothed[i][j]<< " ";
+		}
+		cout<<endl;
+	}*/
 
 	double** downsampled = downsample(smoothed, gridSize);
-	
+	/*cout<<"downsampled: "<<endl;
+	for(int i = 0; i < gridSize; ++i)
+	{
+		for(int j = 0; j < gridSize; ++j)
+		{
+			cout<<downsampled[i][j]<< " ";
+		}
+		cout<<endl;
+	}
+
+	cout << "pixels = " << endl;
+	for (int i = 0; i < numAngles; ++i) {
+		cout << pixels[i] << endl;
+	}*/
 	return featim; 
 }
 
@@ -168,7 +225,7 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
      for(int i = 0; i <= hsize; ++i) // Loop to normalize the kernel
         for(int j = 0; j <= hsize; ++j)
             gfilter[i][j] /= sum;
-            
+    //cout<<"gaussianFilter size "<<hsize+1<<endl;
     return gfilter;
 }
 
@@ -234,7 +291,7 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image)
 {
 	int numOfAngles = angleEnd - angleStart;
-	
+	//cout<<"number of angles"<<numOfAngles<<endl;
 	if(numOfAngles == 0)
 	{
 		return;
@@ -249,7 +306,7 @@ void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double**
 		x2 = sCoords[pointIndex+1][0];
 		y1 = sCoords[pointIndex][1];
 		y2 = sCoords[pointIndex+1][1];
-		
+		//cout<< " x1 " << x1 << " x2 " <<x2 << " y1 "<<y1 << " y2 " << y2 << endl;
 		if(pixels[angleIndex] > 0)
 		{
 			drawBresenham(  x1,  y1, x2, y2, pixels, angleIndex, image );
@@ -348,12 +405,13 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
     int cumSum = 0;
     for(int i = floor(dx/2); i >= floor(dx/2) - dy*dx; i -= dy)
     {
-      cur = (i + (int) dx)%((int) dx);
+      cur = (i + dx)%dx;
       while(cur < 0)
       {
-        cur = (cur + (int) dx)%((int) dx);
+        cur = (cur + dx)%dx;
       }
       arr.push_back(cur);
+     // cout<<cur<<endl;
     }
     for(int i = 1; i < arr.size(); ++i)
       {
@@ -361,6 +419,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
         cur = cur >=0?1:0;
         cumSum += cur;
         q.push_back(cumSum);
+       // cout<<cumSum<<endl;
       }
   }
   vector<int> y;
@@ -405,14 +464,17 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
       y = cum(q, y1, '-');
     }
   }
-  
+  //cout<<"Hello"<<endl;
+ // cout<<"bresenham angle index "<<angleIndex<<endl;
   for(int i = 0; i < x.size(); ++i)
   {
+		//cout<<"bresenham "<<x[i]<<" "<<y[i]<<endl;
         if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
         {
         	image[ y[i] ][ x[i] ] = pixels[angleIndex];
         }
   }
+  //cout<<dx<< " " <<dy<<endl;
 }
 
 
@@ -513,7 +575,11 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
         and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
       */
     double* minDist = getMinAngleDistance(angles, curAngle, curAngle2, numAngles );
-    
+    /*cout << "diffs = " << endl;
+	for (int i = 0; i < numAngles; ++i) {
+		cout << minDist[i] << " ";
+	}*/
+	cout << endl;
 	double* pixValues = new double[numAngles];
 	double curPixel;
 	double angleThreshold = 45;
@@ -530,7 +596,9 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 			curPixel = 0;
 		}
 		pixValues[i] = curPixel;
+		cout << pixValues[i] << " ";
 	}
+	cout << endl;
 
 	return pixValues;
 }

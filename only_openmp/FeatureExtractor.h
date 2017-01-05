@@ -2,6 +2,7 @@
 #include <math.h>
 #include <cmath>
 #include <vector>
+#include <limits>
 
 #define PI 3.14159265
 
@@ -10,10 +11,11 @@ class FeatureExtractor {
 		Sketch* sketch;
 	public:
 		FeatureExtractor(Sketch* sketch);
-		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles, double &maxX, double &maxY, double &minX, double &minY);
+		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles);
 		double* getMinAngleDistance(double *angles, double curAngle, double curAngle2, int numAngles);
 		double truncate(double curDiff);
 		double* pixelValues(double *angles, double curAngle, double curAngle2, int numAngles);
+		void findExtremum(double &maxX, double &maxY, double &minX, double &minY);
 		double* extract();
 		void setSketch(Sketch* newSketch);
 		vector<int> arange(int a, int b, int step);
@@ -34,6 +36,63 @@ void FeatureExtractor::setSketch(Sketch* newSketch)
 	sketch = newSketch;
 }
 
+void FeatureExtractor::findExtremum(double &maxX, double &maxY, double &minX, double &minY) {
+	double** sCoords = sketch->getCoords();
+	int numPoints = sketch->getNumPoints();
+	double my_minX,my_minY,my_maxX,my_maxY;
+	
+	minX = numeric_limits<double>::max();
+	minY = numeric_limits<double>::max();
+	maxX = numeric_limits<double>::min();
+	maxY = numeric_limits<double>::min();
+	
+	#pragma omp parallel private(my_minX,my_minY,my_maxX,my_maxY) num_threads(32)
+	{
+		my_minX = numeric_limits<double>::max();
+		my_minY = numeric_limits<double>::max();
+		my_maxX = numeric_limits<double>::min();
+		my_maxY = numeric_limits<double>::min();
+		
+		#pragma omp for
+		for (int i = 0; i < numPoints; ++i) {
+			if (my_minX > sCoords[i][0]) {
+				my_minX = sCoords[i][0];
+			}
+			
+			if (my_minY > sCoords[i][1]) {
+				my_minY = sCoords[i][1];
+			}
+			
+			if (my_maxX < sCoords[i][0]) {
+				my_maxX = sCoords[i][0];
+			}
+			
+			if (my_maxY < sCoords[i][1]) {
+				my_maxY = sCoords[i][1];
+			}
+		}
+		
+		#pragma omp critical
+		{
+			if (my_minX < minX) {
+				minX = my_minX;
+			}
+			
+			if (my_minY < minY) {
+				minY = my_minY;
+			}
+			
+			if (my_maxX > maxX) {
+				maxX = my_maxX;
+			}
+			
+			if (my_maxY > maxY) {
+				maxY = my_maxY;
+			}
+		}
+	}
+}
+
 double* FeatureExtractor::extract()
 {
 	
@@ -52,35 +111,59 @@ double* FeatureExtractor::extract()
 	double minX, minY, maxX, maxY;
 	int numOfStrokes = normalized->getNumStrokes();
 	setSketch(normalized);
-	coords2angles(angleIndices,angles,numAngles, maxX, maxY, minX, minY);
+	findExtremum(maxX,maxY,minX,minY);
+	coords2angles(angleIndices,angles,numAngles);
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
 	double** gfilter = gaussianFilter(hsize, sigma);
 
+	int curAngle, curAngle2;
+	double *pixels1, *pixels2, *pixels3, *pixels4;
+	double **featImage1, **featImage2, **featImage3, **featImage4, **featImage5;
 	
-	int curAngle = 0;
-	int curAngle2 = (curAngle + 180)%360;
-	double* pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
-	double** featImage1 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+	#pragma omp parallel num_threads(8) private(curAngle,curAngle2)
+	{
+		#pragma omp sections
+		{
+			#pragma omp section
+			{
+				curAngle = 0;
+				curAngle2 = (curAngle + 180)%360;
+				pixels1 = pixelValues(angles, curAngle, curAngle2 , numAngles);
+				featImage1 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+			}
+			
+			#pragma omp section
+			{
+				curAngle = 45;
+				curAngle2 = (curAngle + 180)%360;
+				pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
+				featImage2 = extractFeatureImage(gfilter,pixels2, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+			}
+			
+			#pragma omp section
+			{
+				curAngle = 90;
+				curAngle2 = (curAngle + 180)%360;
+				pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
+				featImage3 = extractFeatureImage(gfilter,pixels3, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+			}
+			
+			#pragma omp section
+			{
+				curAngle = 135;
+				curAngle2 = (curAngle + 180)%360;
+				pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
+				featImage4 = extractFeatureImage(gfilter,pixels4, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
+			}
+			
+			#pragma omp section
+			{
+				featImage5 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
+			}
+		}
+	}
 
-
-	curAngle = 45;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels2 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage2 = extractFeatureImage(gfilter,pixels2, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-
-
-	curAngle = 90;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage3 = extractFeatureImage(gfilter,pixels3, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-	
-	curAngle = 135;
-	curAngle2 = (curAngle + 180)%360;
-	double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
-	double** featImage4 = extractFeatureImage(gfilter,pixels4, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-
-	double** featImage5 = extractFeatureImage(gfilter,pixels1, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
-
+	#pragma omp parallel for num_threads(32)
 	for (int i = 0; i < gridSize; ++i) {
 		for (int j = 0; j < gridSize; ++j) {
 			idmFeature[i*gridSize+j] = featImage1[i][j];
@@ -177,6 +260,8 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
 	double** result = init2Darray(2*gridSize);
 	int ax, ay;
 	double sum = 0, maximum = 0;
+	
+	#pragma omp parallel for num_threads(32)
 	for(int i = 0; i < 2*gridSize; ++i)
 	{
 		for(int j = 0; j < 2*gridSize; ++j)
@@ -200,6 +285,7 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
 	}
 	if(maximum != 0)
 	{
+		#pragma omp parallel for num_threads(32)
 		for(int i = 0; i < 2*gridSize; ++i)
 		{
 			for(int j = 0; j < 2*gridSize; ++j)
@@ -416,7 +502,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 }
 
 
-void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles, double &maxX, double &maxY, double &minX, double &minY) {
+void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles) {
 	//Get stroke coordinates and indices
 	int *sIndices = sketch->getStrokeIndices();
 	double **sCoords = sketch->getCoords();
@@ -429,10 +515,6 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 	int lastIndex;
 	double angle,diffy,diffx;
 	int curAngleIndex;
-	minX = sCoords[0][0];
-	maxX = sCoords[0][0];
-	minY = sCoords[0][1];
-	maxY = sCoords[0][1];
 	for (int str = 0; str < sketch->getNumStrokes(); ++str) {
 		//Get last index of current stroke
 		if (str == sketch->getNumStrokes() - 1) {
@@ -446,19 +528,11 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 		angleIndices[str] = sIndices[str]-str;
 		//Starting index of angles to fill
 		curAngleIndex = angleIndices[str];
-		//update maxs and mins
-		minX = min(minX, sCoords[sIndices[str]][0]);
-		minY = min(minY, sCoords[sIndices[str]][1]);
-		maxX = max(maxX, sCoords[sIndices[str]][0]);
-		maxY = max(maxY, sCoords[sIndices[str]][1]);
 		for (int pt = sIndices[str]+1; pt < lastIndex; ++pt) {
 			//Get differences both in x and y directions
 			diffy = sCoords[pt][1] - sCoords[pt-1][1];
 			diffx = sCoords[pt][0] - sCoords[pt-1][0];
-			minX = min(minX, sCoords[pt][0]);
-			minY = min(minY, sCoords[pt][1]);
-			maxX = max(maxX, sCoords[pt][0]);
-			maxY = max(maxY, sCoords[pt][1]);
+			
 			//Compute angle
 			angle = atan2(diffy,diffx);
 			angle = fmod( (angle + 2*PI), (2*PI));
@@ -491,6 +565,8 @@ double* FeatureExtractor::getMinAngleDistance(double* angles, double curAngle, d
 	//Initialize array of angle distances
 	double* diff = new double[numAngles];
 	double curDiff, curDiff2;
+	
+	#pragma omp parallel for num_threads(32)
 	for(int i = 0; i < numAngles; ++i)
 	{
 		//get angle distances relative to current angles
@@ -518,6 +594,8 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 	double curPixel;
 	double angleThreshold = 45;
 	bool valid;
+	
+	#pragma omp parallel for num_threads(32)
 	for(int i = 0; i < numAngles; ++i)
 	{
 		valid = minDist[i] <= angleThreshold;
