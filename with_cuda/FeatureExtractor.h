@@ -5,7 +5,7 @@
 #include <limits>
 
 #define PI 3.14159265
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 1024
 
 class FeatureExtractor {
 	private:

@@ -463,7 +463,6 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 			angle = atan2(diffy,diffx);
 			angle = fmod( (angle + 2*PI), (2*PI));
 			angle *= 180.0/PI;
-
 			//Assign current angle
 			angles[curAngleIndex++] = angle;
 		}

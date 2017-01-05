@@ -54,11 +54,15 @@ int main(int argc, char *argv[]) {
 	
 	if (is_dir(argv[1])) {
 		string ext = ".sketch";
+		string dirr(argv[1]);
+		
+		if (dirr[dirr.size()-1] != '/') {
+			dirr += "/";
+		}
 		
 		DIR *dir;
 		struct dirent *ent;
 		double *features;
-		FeatureExtractor fextractor(NULL);
 		SketchIO sio("sio");
 		Sketch* sketch;
 		
@@ -70,12 +74,14 @@ int main(int argc, char *argv[]) {
 				
 				if (fname.size() > 7) {
 					if (fname.substr(fname.size()-7,7).compare(ext) == 0) {
-						sio.setFileName(fname);
+						sio.setFileName(dirr+fname);
 						cout << fname << endl;
 						sketch = sio.read();
-						fextractor.setSketch(sketch);
+						FeatureExtractor fextractor(sketch);
 						features = fextractor.extract();
-						//writeFeatures(features);
+						delete sketch;
+						writeFeatures(features);
+						delete [] features;
 					}
 				}
 			}
@@ -110,7 +116,9 @@ int main(int argc, char *argv[]) {
 				sketch = sio.read();
 				fextractor.setSketch(sketch);
 				features = fextractor.extract();
-				//writeFeatures(features);
+				delete sketch;
+				writeFeatures(features);
+				delete [] features;
 			}
 		}
 		

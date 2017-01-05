@@ -239,7 +239,6 @@ Sketch* Sketch::resample(double rate) {
 
 Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 {
-	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
 	double newMax = 23, newMin = 0;
 	double newRange = newMax - newMin;
 	double oldRangeX = maxX - minX;
@@ -267,7 +266,6 @@ Sketch* Sketch::transform(double minX, double minY, double maxX, double maxY)
 		//	cout<<"transformed Y "<<transformed->coords[i][1] <<endl;
 		}
 	}
-	cout<<"minX "<<minX << " minY " << minY << " maxX " << maxX << " maxY "<<maxY<<endl;
 
 	return transformed;
 }
@@ -280,10 +278,6 @@ void Sketch::addPoint(double x, double y) {
 		coords[0][ptAdded] = x;
 		coords[1][ptAdded++] = y;
 	}
-	else {
-		// otherwise give an error message
-		cout << "ERROR: Sketch is full!" << endl;
-	}
 }
 
 // to open a new stroke
@@ -292,10 +286,6 @@ void Sketch::openStroke() {
 	if (strAdded < numStrokes) {
 		// add the starting index of the new stroke
 		strokeIndices[strAdded++] = ptAdded;
-	}
-	else {
-		// otherwise give an error message
-		cout << "ERROR: Sketch is full!" << endl;
 	}
 }
 

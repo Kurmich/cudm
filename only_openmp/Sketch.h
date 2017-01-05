@@ -269,10 +269,6 @@ void Sketch::addPoint(double x, double y) {
 		coords[ptAdded][0] = x;
 		coords[ptAdded++][1] = y;
 	}
-	else {
-		// otherwise give an error message
-		cout << "ERROR: Sketch is full!" << endl;
-	}
 }
 
 // to open a new stroke
@@ -281,10 +277,6 @@ void Sketch::openStroke() {
 	if (strAdded < numStrokes) {
 		// add the starting index of the new stroke
 		strokeIndices[strAdded++] = ptAdded;
-	}
-	else {
-		// otherwise give an error message
-		cout << "ERROR: Sketch is full!" << endl;
 	}
 }
 
