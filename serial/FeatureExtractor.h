@@ -11,11 +11,9 @@ class FeatureExtractor {
 	public:
 		// constructor
 		FeatureExtractor(Sketch* sketch);
-		// a method that finds the angle of a line relative to the x axis
-		// between every two consecutive sketch point in every stroke
+		// a method that finds the angle of a line between every two consecutive sketch points relative to the x axis
 		void coords2angles(int *&strokeIndices, double *&angles, int &numAngles, double &maxX, double &maxY, double &minX, double &minY);
-		// given the reference angle, construct the difference between each angle in angles list
-		// and the ref. angle
+		// given the reference angle, construct the difference between each angle in the angles list and the ref. angle
 		double* getMinAngleDistance(double *angles, double curAngle, double curAngle2, int numAngles);
 		// a helper method in getMinAngleDistance
 		double truncate(double curDiff);
@@ -23,7 +21,7 @@ class FeatureExtractor {
 		double* pixelValues(double *angles, double curAngle, double curAngle2, int numAngles);
 		// extractor method
 		double* extract();
-		// this method sets the sketch to be extracted to the sketch given in the parameter
+		// this method sets the sketch which will be used for feature extraction
 		void setSketch(Sketch* newSketch);
 		// range constructor used in drawBresenham
 		vector<int> arange(int a, int b, int step);
@@ -100,7 +98,7 @@ double* FeatureExtractor::extract()
 	curAngle2 = (curAngle + 180)%360;
 	double* pixels3 = pixelValues(angles, curAngle, curAngle2, numAngles);
 	double** featImage3 = extractFeatureImage(gfilter,pixels3, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-	
+
 	curAngle = 135;
 	curAngle2 = (curAngle + 180)%360;
 	double* pixels4 = pixelValues(angles, curAngle, curAngle2, numAngles);
@@ -124,15 +122,15 @@ double* FeatureExtractor::extract()
 		delete [] featImage4[i];
 		delete [] featImage5[i];
 	}
-	
+
 	for (int i = 0; i <= hsize; ++i) {
 		delete [] gfilter[i];
 	}
-	
+
 	delete resampled;
 	delete normalized;
 	delete transformed;
-	
+
 	delete [] gfilter;
 	delete [] pixels1;
 	delete [] pixels2;
@@ -145,7 +143,7 @@ double* FeatureExtractor::extract()
 	delete [] featImage4;
 	delete [] featImage5;
 	delete [] angles;
-	
+
     return idmFeature;
 }
 
@@ -157,7 +155,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 	double** featim = init2Darray(2*gridSize);;
 	int* sIndices = transformed->getStrokeIndices();
 	double** sCoords = transformed->getCoords();
-	int numOfPoints = transformed->getNumPoints();  
+	int numOfPoints = transformed->getNumPoints();
 	int numOfStrokes = transformed->getNumStrokes();
 	if(!endpt)
 	{
@@ -167,18 +165,18 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 		{
 			strokeStart = sIndices[i];
 			angleStart = angleIndices[i];
-			
+
 			if(i < numOfStrokes - 1 )
 			{
 				strokeEnd = sIndices[i+1];
-				angleEnd = angleIndices[i+1]; 
+				angleEnd = angleIndices[i+1];
 			}
 			else
 			{
 				angleEnd = numAngles;
 				strokeEnd = numOfPoints;
 			}
-			
+
 			// construct the feature image
 			pointsToImage(pixels, angleIndices, sCoords, gridSize, strokeStart, strokeEnd, angleStart, angleEnd, featim);
 		}
@@ -192,7 +190,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			strokeStart = sIndices[i];
 			if(i < numOfStrokes - 1 )
 			{
-				strokeEnd = sIndices[i+1] - 1; 
+				strokeEnd = sIndices[i+1] - 1;
 			}
 			else
 			{
@@ -203,29 +201,29 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			featim[ (int)sCoords[strokeEnd][1] ][ (int)sCoords[strokeEnd][0] ] = 1;
 		}
 	}
-	
+
 	// smooth & downsample the feature image
 	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
 	double** downsampled = downsample(smoothed, gridSize);
-	
+
 	for (int i = 0; i < 2*gridSize; ++i) {
 		delete [] smoothed[i];
 	}
 	delete [] smoothed;
-	
-	return downsampled; 
+
+	return downsampled;
 }
 
-// a function constructing a gaussian filter given the filter size and sigma
+// a function to construct a gaussian filter given the filter size and sigma
 double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
 {
 	double** gfilter = init2Darray(hsize+1);
 	double sum = 0;
 	double r, s = 2.0 * sigma * sigma;
 	int d = hsize/2;
-	
+
 	// construct the filter in every entry (i,j)
-	// using bi-Gaussian distribution
+	// using 2D-Gaussian distribution
 	for (int x = -d; x <= d; x++) // Loop to generate 5x5 kernel
     {
         for(int y = -d; y <= d; y++)
@@ -235,11 +233,11 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
             sum += gfilter[x + d][y + d];
         }
     }
-	
+
      for(int i = 0; i <= hsize; ++i) // Loop to normalize the kernel
         for(int j = 0; j <= hsize; ++j)
             gfilter[i][j] /= sum;
-            
+
     return gfilter;
 }
 
@@ -263,7 +261,7 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
                     if(ax >= 0 && ay >= 0 && ax < 2*gridSize && ay < 2*gridSize)
                     {
                         sum = sum + image[ax][ay] * fgauss[fi][fj];
-                    }  
+                    }
 				}
 			}
 			result[i][j] = sum;
@@ -282,11 +280,11 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
 		}
 	}
 
-	
+
 	return result;
 }
 
-// downsampling of an image through maxpooling
+// downsampling of an image by maxpooling
 double** FeatureExtractor::downsample(double** image, double gridSize)
 {
 	double** downsampled = init2Darray(gridSize);
@@ -309,7 +307,7 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image)
 {
 	int numOfAngles = angleEnd - angleStart;
-	
+
 	if(numOfAngles == 0)
 	{
 		return;
@@ -324,13 +322,13 @@ void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double**
 		x2 = sCoords[pointIndex+1][0];
 		y1 = sCoords[pointIndex][1];
 		y2 = sCoords[pointIndex+1][1];
-		
+
 		if(pixels[angleIndex] > 0)
 		{
 			drawBresenham(  x1,  y1, x2, y2, pixels, angleIndex, image );
 		}
 	}
-	
+
 }
 
 // 2d array initialization
@@ -484,7 +482,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
       y = cum(q, y1, '-');
     }
   }
-  
+
   for(int i = 0; i < x.size(); ++i)
   {
         if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
@@ -494,17 +492,17 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
   }
 }
 
-// output the angles to the x-axis between every two consecutive point
+// output the angles to the x-axis between every two consecutive points
 void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &numOfAngles, double &maxX, double &maxY, double &minX, double &minY) {
 	//Get stroke coordinates and indices
 	int *sIndices = sketch->getStrokeIndices();
 	double **sCoords = sketch->getCoords();
-	
-	//Initialize 
+
+	//Initialize
 	angleIndices = new int[sketch->getNumStrokes()];
 	numOfAngles = sketch->getNumPoints() - sketch->getNumStrokes();
 	angles = new double[numOfAngles];
-	
+
 	int lastIndex;
 	double angle,diffy,diffx;
 	int curAngleIndex;
@@ -520,7 +518,7 @@ void FeatureExtractor::coords2angles(int *&angleIndices, double *&angles, int &n
 		else {
 			lastIndex = sIndices[str+1];
 		}
-		
+
 		//Assign start index of angles for this stroke
 		angleIndices[str] = sIndices[str]-str;
 		//Starting index of angles to fill
@@ -587,11 +585,11 @@ double* FeatureExtractor::getMinAngleDistance(double* angles, double curAngle, d
 
 double* FeatureExtractor::pixelValues(double* angles, double curAngle, double curAngle2, int numAngles)
 {	/*
-        Assign pixel values are calculated as a difference between stroke angle and the reference angle
-        and vary linearly between 1.0(if the two are equal) and 0.0(if they differ by more than 45 degrees)
+        Assign pixel values that are calculated using the difference between stroke angle and the reference angle.
+        The pixel values vary linearly between 1.0(if the stroke angle and reference angle are equal) and 0.0(if they differ by more than 45 degrees).
       */
     double* minDist = getMinAngleDistance(angles, curAngle, curAngle2, numAngles );
-    
+
 	double* pixValues = new double[numAngles];
 	double curPixel;
 	double angleThreshold = 45;
@@ -612,4 +610,3 @@ double* FeatureExtractor::pixelValues(double* angles, double curAngle, double cu
 
 	return pixValues;
 }
-

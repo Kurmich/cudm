@@ -13,13 +13,12 @@ class FeatureExtractor {
 	public:
 		// constructor
 		FeatureExtractor(Sketch* sketch);
-		// a method that finds the angle of a line relative to the x axis
-		// between every two consecutive sketch point in every stroke and maps them to the pixels in a feature image
-		// using CUDA
+		// a method that finds the angle of a line between every two consecutive sketch points relative to the x axis, and maps them to the pixels in a feature image
+		//CUDA
 		void coords2pixels(int *&angleIndices, double *curAngles, double *curAngles2, int &numOfAngles, double *&pixValues);
 		// extractor method
 		double* extract();
-		// this method sets the sketch to be extracted to the sketch given in the parameter
+		// this method sets the sketch which will be used for feature extraction
 		void setSketch(Sketch* newSketch);
 		// range constructor used in drawBresenham
 		vector<int> arange(int a, int b, int step);
@@ -34,7 +33,7 @@ class FeatureExtractor {
 		double** extractFeatureImage(double** gfilter, double* pixels, int* angleIndices, int numAngles, Sketch* transformed,  int hsize, int gridSize, bool endpt);
 		// mapper from the sketch points to a single feature image
 		void pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image);
-		// this method finds the max. & min. of x&y coordinates 
+		// this method finds the max. & min. of x&y coordinates
 		// in the given sketch
 		void findExtremum(double &maxX, double &maxY, double &minX, double &minY);
 		// downsampler for 24x24 images
@@ -52,7 +51,7 @@ void FeatureExtractor::setSketch(Sketch* newSketch)
 	sketch = newSketch;
 }
 
-// this method finds the max. & min. of x&y coordinates 
+// this method finds the max. & min. of x&y coordinates
 // in the given sketch
 void FeatureExtractor::findExtremum(double &maxX, double &maxY, double &minX, double &minY) {
 	// get the coordinates of sketch points
@@ -60,14 +59,14 @@ void FeatureExtractor::findExtremum(double &maxX, double &maxY, double &minX, do
 	// get the number of points
 	int numPoints = sketch->getNumPoints();
 	double my_minX,my_minY,my_maxX,my_maxY;
-	
+
 	// init. min & max x & y
 	minX = numeric_limits<double>::max();
 	minY = numeric_limits<double>::max();
 	maxX = numeric_limits<double>::min();
 	maxY = numeric_limits<double>::min();
-	
-	// parallelized min & max reduction algorithm 
+
+	// parallelized min & max reduction algorithm
 	#pragma omp parallel private(my_minX,my_minY,my_maxX,my_maxY) num_threads(32)
 	{
 		// each thread finds their local mins and maxs
@@ -75,41 +74,41 @@ void FeatureExtractor::findExtremum(double &maxX, double &maxY, double &minX, do
 		my_minY = numeric_limits<double>::max();
 		my_maxX = numeric_limits<double>::min();
 		my_maxY = numeric_limits<double>::min();
-		
+
 		#pragma omp for
 		for (int i = 0; i < numPoints; ++i) {
 			if (my_minX > sCoords[0][i]) {
 				my_minX = sCoords[0][i];
 			}
-			
+
 			if (my_minY > sCoords[1][i]) {
 				my_minY = sCoords[1][i];
 			}
-			
+
 			if (my_maxX < sCoords[0][i]) {
 				my_maxX = sCoords[0][i];
 			}
-			
+
 			if (my_maxY < sCoords[1][i]) {
 				my_maxY = sCoords[1][i];
 			}
 		}
-		
+
 		// here we reduce the min & maxs
 		#pragma omp critical
 		{
 			if (my_minX < minX) {
 				minX = my_minX;
 			}
-			
+
 			if (my_minY < minY) {
 				minY = my_minY;
 			}
-			
+
 			if (my_maxX > maxX) {
 				maxX = my_maxX;
 			}
-			
+
 			if (my_maxY > maxY) {
 				maxY = my_maxY;
 			}
@@ -140,25 +139,25 @@ double* FeatureExtractor::extract()
 	setSketch(normalized);
 	// find the extreme coordinates
 	findExtremum(maxX,maxY,minX,minY);
-	
+
 	// set the angles to be referenced during feature image construction
 	double* curAngles = new double[4];
 	double* curAngles2 = new double[4];
 	double* pixels;
-	
+
 	for (int i = 0; i < 4; ++i) {
 		curAngles[i] = (double) i*45;
 		curAngles2[i] = (double) ((i*45 + 180) % 360);
 	}
-	
+
 	// construct the pixels
 	coords2pixels(angleIndices,curAngles,curAngles2,numAngles,pixels);
 	Sketch* transformed = normalized->transform(minX, minY, maxX, maxY);
-	
+
 	double** gfilter = gaussianFilter(hsize, sigma);
-	
+
 	double **featImage1, **featImage2, **featImage3, **featImage4, **featImage5;
-	
+
 	// here, we extract 5 different feature images
 	// using OpenMP task parallelism
 	// a single task is defined as extraction of a single 12x12 feature image
@@ -168,21 +167,21 @@ double* FeatureExtractor::extract()
 		{
 			#pragma omp section
 			featImage1 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-			
+
 			#pragma omp section
 			featImage2 = extractFeatureImage(gfilter,&pixels[numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-			
+
 			#pragma omp section
 			featImage3 = extractFeatureImage(gfilter,&pixels[2*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-			
+
 			#pragma omp section
 			featImage4 = extractFeatureImage(gfilter,&pixels[3*numAngles], angleIndices, numAngles, transformed,  hsize,  gridSize, false );
-			
+
 			#pragma omp section
 			featImage5 = extractFeatureImage(gfilter,pixels, angleIndices, numAngles, transformed,  hsize,  gridSize, true );
 		}
 	}
-	
+
 	delete [] pixels;
 	delete [] curAngles;
 	delete [] curAngles2;
@@ -198,22 +197,22 @@ double* FeatureExtractor::extract()
 			idmFeature[4*fimgSize+i*gridSize+j] = featImage5[i][j];
 		}
 	}
-	
+
 	for (int i = 0; i <= hsize; ++i) {
 		delete [] gfilter[i];
 	}
-	
+
 	delete resampled;
 	delete normalized;
 	delete transformed;
-	
+
 	delete [] gfilter;
 	delete [] featImage1;
 	delete [] featImage2;
 	delete [] featImage3;
 	delete [] featImage4;
 	delete [] featImage5;
-	
+
     return idmFeature;
 }
 
@@ -225,7 +224,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 	double** featim = init2Darray(2*gridSize);;
 	int* sIndices = transformed->getStrokeIndices();
 	double** sCoords = transformed->getCoords();
-	int numOfPoints = transformed->getNumPoints();  
+	int numOfPoints = transformed->getNumPoints();
 	int numOfStrokes = transformed->getNumStrokes();
 	if(!endpt)
 	{
@@ -238,7 +237,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			if(i < numOfStrokes - 1 )
 			{
 				strokeEnd = sIndices[i+1];
-				angleEnd = angleIndices[i+1]; 
+				angleEnd = angleIndices[i+1];
 			}
 			else
 			{
@@ -258,7 +257,7 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			strokeStart = sIndices[i];
 			if(i < numOfStrokes - 1 )
 			{
-				strokeEnd = sIndices[i+1] - 1; 
+				strokeEnd = sIndices[i+1] - 1;
 			}
 			else
 			{
@@ -269,20 +268,20 @@ double** FeatureExtractor::extractFeatureImage(double** gfilter, double* pixels,
 			featim[ (int)sCoords[1][strokeEnd] ][ (int)sCoords[0][strokeEnd] ] = 1;
 		}
 	}
-	
+
 	// smooth & downsample the feature image
 	double** smoothed = smoothim(featim, gfilter, hsize, gridSize);
 	double** downsampled = downsample(smoothed, gridSize);
-	
+
 	for (int i = 0; i < 2*gridSize; ++i) {
 		delete [] smoothed[i];
 	}
 	delete [] smoothed;
-	
-	return downsampled; 
+
+	return downsampled;
 }
 
-// a function constructing a gaussian filter given the filter size and sigma
+// a function to construct a gaussian filter given the filter size and sigma
 double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
 {
 	double** gfilter = init2Darray(hsize+1);
@@ -290,7 +289,7 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
 	double r, s = 2.0 * sigma * sigma;
 	int d = hsize/2;
 	// construct the filter in every entry (i,j)
-	// using bi-Gaussian distribution
+	// using 2D-Gaussian distribution
 	for (int x = -d; x <= d; x++) // Loop to generate 5x5 kernel
     {
         for(int y = -d; y <= d; y++)
@@ -304,18 +303,18 @@ double** FeatureExtractor::gaussianFilter(int hsize, double sigma)
      for(int i = 0; i <= hsize; ++i) // Loop to normalize the kernel
         for(int j = 0; j <= hsize; ++j)
             gfilter[i][j] /= sum;
-    
+
     return gfilter;
 }
 
 // image smoothing using a given smoothing kernel (in our case, the filter is Gaussian)
 double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, int gridSize)
 {
-	
+
 	double** result = init2Darray(2*gridSize);
 	int ax, ay;
 	double sum = 0, maximum = 0;
-	
+
 	// we parallelized the convolution operation using OpenMP
 	#pragma omp parallel for num_threads(32)
 	for(int i = 0; i < 2*gridSize; ++i)
@@ -332,17 +331,17 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
                     if(ax >= 0 && ay >= 0 && ax < 2*gridSize && ay < 2*gridSize)
                     {
                         sum = sum + image[ax][ay] * fgauss[fi][fj];
-                    }  
+                    }
 				}
 			}
 			result[i][j] = sum;
-			
+
 			if (sum > maximum) {
 				maximum = sum;
 			}
 		}
 	}
-	
+
 	if(maximum != 0)
 	{
 		// normalization
@@ -356,7 +355,7 @@ double** FeatureExtractor::smoothim(double **image, double** fgauss, int hsize, 
 		}
 	}
 
-	
+
 	return result;
 }
 
@@ -365,7 +364,7 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 {
 	double** downsampled = init2Darray(gridSize);
 	double curMax;
-	
+
 	for(int i = 0; i < 2*gridSize; i += 2)
 	{
 		for(int j = 0; j < 2*gridSize; j += 2)
@@ -376,15 +375,15 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 			else {
 				curMax = image[i][j];
 			}
-			
+
 			if (curMax < image[i][j+1]) {
 				curMax = image[i][j+1];
 			}
-			
+
 			if (curMax < image[i+1][j+1]) {
 				curMax = image[i+1][j+1];
 			}
-			
+
 			downsampled[i/2][j/2] = curMax;
 		}
 	}
@@ -396,12 +395,12 @@ double** FeatureExtractor::downsample(double** image, double gridSize)
 void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double** sCoords, int gridSize, int strokeStart, int strokeEnd, int angleStart, int angleEnd, double** &image)
 {
 	int numOfAngles = angleEnd - angleStart;
-	
+
 	if(numOfAngles == 0)
 	{
 		return;
 	}
-	
+
 	int angleIndex, pointIndex;
 	double x1, x2, y1, y2;
 	for(int i = 0; i < numOfAngles; ++i)
@@ -417,14 +416,14 @@ void FeatureExtractor::pointsToImage(double* pixels, int* angleIndices, double**
 			drawBresenham(  x1,  y1, x2, y2, pixels, angleIndex, image );
 		}
 	}
-	
+
 }
 
 // 2d array initialization
 double** FeatureExtractor::init2Darray(int size)
 {
 	double** array = new double*[size];
-	
+
 	for(int i =0; i < size; ++i)
 	{
 		array[i] = new double[size];
@@ -437,7 +436,7 @@ double** FeatureExtractor::init2Darray(int size)
 			array[i][j] = 0;
 		}
 	}
-	
+
 	return array;
 }
 
@@ -445,7 +444,7 @@ double** FeatureExtractor::init2Darray(int size)
 vector<int> FeatureExtractor::arange(int a, int b, int step)
 {
 	vector<int> ans;
-	
+
 	if(step == 1)
 	{
 		for(int i = a; i <= b; ++i)
@@ -460,7 +459,7 @@ vector<int> FeatureExtractor::arange(int a, int b, int step)
 			ans.push_back(i);
 		}
 	}
-	
+
 	return ans;
 }
 
@@ -468,7 +467,7 @@ vector<int> FeatureExtractor::arange(int a, int b, int step)
 vector<int> FeatureExtractor::cum(vector<int> q,  int x, char op)
 {
 	vector<int> ans;
-	
+
 	if(op == '+')
 	{
 		for(int i = 0; i < q.size(); ++i)
@@ -483,7 +482,7 @@ vector<int> FeatureExtractor::cum(vector<int> q,  int x, char op)
 			ans.push_back( x - q[i] );
 		}
 	}
-	
+
 	return ans;
 }
 
@@ -505,7 +504,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 		dx = dy;
 		dy = tmp;
 	}
-	
+
 	if(dy == 0)
 	{
 		for(int  i = 0; i <= dx; ++i)
@@ -519,18 +518,18 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 		vector<int> arr;
 		int cur;
 		int cumSum = 0;
-		
+
 		for(int i = floor(dx/2); i >= floor(dx/2) - dy*dx; i -= dy)
 		{
 			cur = (i + dx)%dx;
-			
+
 			while(cur < 0)
 			{
 				cur = (cur + dx)%dx;
 			}
 			arr.push_back(cur);
 		}
-		
+
 		for(int i = 1; i < arr.size(); ++i)
 		{
 			cur = arr[i] - arr[i-1];
@@ -581,7 +580,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 			y = cum(q, y1, '-');
 		}
 	}
-	
+
 	for(int i = 0; i < x.size(); ++i)
 	{
 		if(image[ y[i] ][ x[i] ] < pixels[angleIndex])
@@ -594,7 +593,7 @@ void FeatureExtractor::drawBresenham(  double x1,  double y1, double x2, double 
 // CUDA kernel to calculate pixel values for each sketch point
 __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, double *curAngle, double *curAngle2, double *angleThreshold, int *numAngles, int *strokes, int *strokeIndices, int *numOfPoints, double *pixValues) {
 	int pt = blockIdx.x*blockDim.x + threadIdx.x;
-	
+
 	if (pt < *numOfPoints && strokeIndices[strokes[pt]] < pt) {
 		//Get differences both in x and y directions
 		double diffy = sCoords_y[pt] - sCoords_y[pt-1];
@@ -606,7 +605,7 @@ __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, doubl
 		angle *= 180.0/PI;
 		double curAng = *curAngle;
 		double curAng2 = *curAngle2;
-		
+
 		double curDiff = angle - curAng;
 		double curDiff2 = angle - curAng2;
 		//truncate angle distance between 0 and 180
@@ -616,9 +615,9 @@ __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, doubl
 		else if ( curDiff <= -180) {
 			curDiff += 360;
 		}
-		
+
 		curDiff = abs(curDiff);
-		
+
 		//curDiff = truncate(curDiff);
 		if ( curDiff2 >= 180) {
 			curDiff2 -= 360;
@@ -626,9 +625,9 @@ __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, doubl
 		else if ( curDiff2 <= -180) {
 			curDiff2 += 360;
 		}
-		
+
 		curDiff2 = abs(curDiff2);
-		
+
 		//curDiff2 = truncate(curDiff2);
 		//Assign minimum angle distance
 		if (curDiff < curDiff2) {
@@ -637,9 +636,9 @@ __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, doubl
 		else {
 			diff = curDiff2;
 		}
-		
+
 		//diff[i] = min(curDiff, curDiff2);
-		
+
 		if(diff <= (*angleThreshold))
 		{
 			curPixel = 1 - (diff / (*angleThreshold));
@@ -648,7 +647,7 @@ __global__ void coords2pixels_kernel(double *sCoords_x, double *sCoords_y, doubl
 		{
 			curPixel = 0;
 		}
-		
+
 		pixValues[(((int) curAng)/45)*(*numAngles) + pt-(1+strokes[pt])] = curPixel;
 	}
 }
@@ -663,28 +662,28 @@ void FeatureExtractor::coords2pixels(int *&angleIndices, double *curAngles, doub
 	numOfAngles = numOfPoints - numOfStrokes;
 	angleIndices = new int[numOfAngles];
 	double angleThreshold = 45;
-	
+
 	pixValues = new double[numOfAngles*4];
-	
+
 	int lastIndex;
 	int *strokes = new int[numOfPoints];
-	
+
 	for (int str = 0; str < numOfStrokes; ++str) {
 		angleIndices[str] = sIndices[str] - str;
-		
+
 		if (str == numOfStrokes - 1) {
 			lastIndex = numOfPoints;
 		}
 		else {
 			lastIndex = sIndices[str+1];
 		}
-		
+
 		#pragma omp parallel for num_threads(32)
 		for (int pt = sIndices[str]; pt < lastIndex; ++pt) {
 			strokes[pt] = str;
 		}
 	}
-	
+
 	// transfer the necessary contents to device memory
 	double *sCoords_x_device;
 	cudaMalloc( &sCoords_x_device, sizeof(double)*numOfPoints);
@@ -715,9 +714,9 @@ void FeatureExtractor::coords2pixels(int *&angleIndices, double *curAngles, doub
 	int *numAngles_device;
 	cudaMalloc( &numAngles_device, sizeof(int));
 	cudaMemcpy( numAngles_device, &numOfAngles, sizeof(int), cudaMemcpyHostToDevice);
-	
+
 	int itemsPerBlock = numOfPoints / BLOCK_SIZE + (numOfPoints % BLOCK_SIZE == 0 ? 0 : 1);
-	
+
 	// task parallelism in here
 	// each task is defined as finding pixel values using a specific reference angle
 	#pragma omp parallel num_threads(4)
@@ -726,25 +725,25 @@ void FeatureExtractor::coords2pixels(int *&angleIndices, double *curAngles, doub
 		{
 			#pragma omp section
 			coords2pixels_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,&curAngles_device[1],&curAngles2_device[1],angleThreshold_device,numAngles_device,strokes_device,strokeIndices_device,numOfPoints_device,pixValues_device);
-			
+
 			#pragma omp section
-			coords2pixels_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,&curAngles_device[0],&curAngles2_device[0],angleThreshold_device,numAngles_device,strokes_device,strokeIndices_device,numOfPoints_device,pixValues_device);	
-			
+			coords2pixels_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,&curAngles_device[0],&curAngles2_device[0],angleThreshold_device,numAngles_device,strokes_device,strokeIndices_device,numOfPoints_device,pixValues_device);
+
 			#pragma omp section
 			coords2pixels_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,&curAngles_device[2],&curAngles2_device[2],angleThreshold_device,numAngles_device,strokes_device,strokeIndices_device,numOfPoints_device,pixValues_device);
-			
+
 			#pragma omp section
 			coords2pixels_kernel<<<itemsPerBlock,BLOCK_SIZE>>>(sCoords_x_device,sCoords_y_device,&curAngles_device[3],&curAngles2_device[3],angleThreshold_device,numAngles_device,strokes_device,strokeIndices_device,numOfPoints_device,pixValues_device);
 		}
 	}
-	
+
 	// print CUDA execution error if any
 	cudaError_t err = cudaGetLastError();
 	if (err != cudaSuccess) cout << "CUDA Execution Error: " << cudaGetErrorString(err) << endl;
-	
+
 	// get the pixel contents from the device memory
 	cudaMemcpy( pixValues, pixValues_device, sizeof(double)*numOfAngles*4, cudaMemcpyDeviceToHost);
-	
+
 	// freeing the arrays resided in the device memory
 	cudaFree( sCoords_x_device);
 	cudaFree( sCoords_y_device);
@@ -755,6 +754,6 @@ void FeatureExtractor::coords2pixels(int *&angleIndices, double *curAngles, doub
 	cudaFree( numOfPoints_device);
 	cudaFree( strokes_device);
 	cudaFree( strokeIndices_device);
-	
+
 	delete [] strokes;
 }
